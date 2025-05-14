@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://5m315folh6d0"
+path="res://.godot/imported/Suno AI Music.mp3-128f8be48c660115a22f38d3f917e247.mp3str"
+
+[deps]
+
+source_file="res://assets/music/Suno AI Music.mp3"
+dest_files=["res://.godot/imported/Suno AI Music.mp3-128f8be48c660115a22f38d3f917e247.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

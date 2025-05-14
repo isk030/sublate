@@ -1,0 +1,243 @@
+[gd_scene load_steps=13 format=3 uid="uid://5pj1h7kwtmcp"]
+
+[ext_resource type="Script" uid="uid://1pojjuwqhnei" path="res://Scenes/Main.gd" id="1_6iyac"]
+[ext_resource type="PackedScene" uid="uid://b34i7gd50ri4c" path="res://Scenes/background_area.tscn" id="1_jjgbg"]
+[ext_resource type="PackedScene" uid="uid://m4hi1i11i5br" path="res://Scenes/card_area.tscn" id="2_bo1nx"]
+[ext_resource type="PackedScene" uid="uid://c3rc37ormn64q" path="res://Scenes/player_panel.tscn" id="3_8gbba"]
+[ext_resource type="Texture2D" uid="uid://s5vbytx20e01" path="res://assets/ui/yellow_button00.png" id="3_344ge"]
+[ext_resource type="PackedScene" uid="uid://c7tne7uowmnoq" path="res://Scenes/score_bar.tscn" id="3_ynf5e"]
+[ext_resource type="Texture2D" uid="uid://cteuwalfu41jb" path="res://assets/ui/grey_button00.png" id="4_fdnlq"]
+[ext_resource type="PackedScene" uid="uid://sjc56widjri5" path="res://Scenes/score_panel.tscn" id="4_jjvhh"]
+[ext_resource type="PackedScene" uid="uid://hojxrk2dmg3h" path="res://Scenes/buff_panel.tscn" id="5_21xkr"]
+[ext_resource type="Texture2D" uid="uid://bg4gr0d3brjxf" path="res://assets/images/ChatGPT Image 29. Apr. 2025, 12_12_47.png" id="8_344ge"]
+[ext_resource type="LabelSettings" uid="uid://cb8iojn2gnaxn" path="res://Scenes/label_80.tres" id="8_jkdf5"]
+[ext_resource type="LabelSettings" uid="uid://ddqfocf8jj42f" path="res://Scenes/label_60.tres" id="9_wsu2k"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_6iyac")
+
+[node name="BackgroundArea" parent="." instance=ExtResource("1_jjgbg")]
+layout_mode = 1
+
+[node name="TextureRect" type="TextureRect" parent="BackgroundArea"]
+modulate = Color(0.712129, 0.712129, 0.712129, 1)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("8_344ge")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BackgroundArea"]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+theme_override_constants/separation = 80
+
+[node name="ScoreBar" parent="BackgroundArea/VBoxContainer" instance=ExtResource("3_ynf5e")]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+
+[node name="TextureRect2" type="TextureRect" parent="BackgroundArea/VBoxContainer/ScoreBar"]
+custom_minimum_size = Vector2(1920, 50)
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+texture = ExtResource("4_fdnlq")
+expand_mode = 1
+
+[node name="TextureRect" type="TextureRect" parent="BackgroundArea/VBoxContainer/ScoreBar"]
+custom_minimum_size = Vector2(1500, 0)
+layout_mode = 0
+offset_right = 1500.0
+offset_bottom = 49.0
+texture = ExtResource("3_344ge")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="BackgroundArea/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 6
+
+[node name="PlayerPanel" parent="BackgroundArea/VBoxContainer/HBoxContainer" instance=ExtResource("3_8gbba")]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="ColorRect" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel"]
+modulate = Color(0.52549, 0.52549, 0.52549, 0.462745)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.558536, 0.0669424, 0.959879, 1)
+
+[node name="ScorePanel" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel" instance=ExtResource("4_jjvhh")]
+layout_mode = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -196.0
+offset_right = 196.0
+offset_bottom = 408.0
+grow_horizontal = 2
+alignment = 1
+
+[node name="Label" type="Label" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Score"
+label_settings = ExtResource("8_jkdf5")
+horizontal_alignment = 1
+
+[node name="Label2" type="Label" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+text = "99999999"
+label_settings = ExtResource("9_wsu2k")
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_constants/separation = 73
+
+[node name="ColorRect" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+color = Color(0.61339, 0.61339, 0.61339, 1)
+
+[node name="Label" type="Label" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer/ColorRect"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -36.5
+offset_top = -44.0
+offset_right = 36.5
+offset_bottom = 44.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "11"
+label_settings = ExtResource("9_wsu2k")
+horizontal_alignment = 1
+
+[node name="Label4" type="Label" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "X"
+label_settings = ExtResource("9_wsu2k")
+horizontal_alignment = 1
+
+[node name="ColorRect2" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(120, 120)
+layout_mode = 2
+color = Color(0.61339, 0.61339, 0.61339, 1)
+
+[node name="Label" type="Label" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer/ColorRect2"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -36.5
+offset_top = -44.0
+offset_right = 36.5
+offset_bottom = 44.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "81"
+label_settings = ExtResource("9_wsu2k")
+
+[node name="BuffPanel" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel" instance=ExtResource("5_21xkr")]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_bottom = 0.5
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -223.0
+offset_right = 223.0
+offset_bottom = 100.0
+grow_horizontal = 2
+
+[node name="Control" type="Control" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 73
+
+[node name="ColorRect" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+color = Color(0.57098, 0.57098, 0.57098, 1)
+
+[node name="ColorRect2" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+color = Color(0.57098, 0.57098, 0.57098, 1)
+
+[node name="ColorRect3" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+color = Color(0.57098, 0.57098, 0.57098, 1)
+
+[node name="Control2" type="Control" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 245
+
+[node name="ColorRect4" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer2"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+color = Color(0.57098, 0.57098, 0.57098, 1)
+
+[node name="ColorRect5" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer2"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+color = Color(0.57098, 0.57098, 0.57098, 1)
+
+[node name="CardArea" parent="BackgroundArea/VBoxContainer/HBoxContainer" instance=ExtResource("2_bo1nx")]
+custom_minimum_size = Vector2(1200, 800)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="GridContainer" type="GridContainer" parent="BackgroundArea/VBoxContainer/HBoxContainer/CardArea"]
+z_index = 1
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -320.0
+offset_top = -320.0
+offset_right = 320.0
+offset_bottom = 320.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/h_separation = 20
+theme_override_constants/v_separation = 20
+columns = 3

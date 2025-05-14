@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cal8x6681fvfb"
+path="res://.godot/imported/Sneek Up by Cruizer61.mp3-2872653f8a91ef09428743ed9102674b.mp3str"
+
+[deps]
+
+source_file="res://assets/music/Sneek Up by Cruizer61.mp3"
+dest_files=["res://.godot/imported/Sneek Up by Cruizer61.mp3-2872653f8a91ef09428743ed9102674b.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

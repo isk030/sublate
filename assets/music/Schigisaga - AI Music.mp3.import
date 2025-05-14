@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://blmul3uxhnhbq"
+path="res://.godot/imported/Schigisaga - AI Music.mp3-ad90b6d67749bcee466d125f8a7f9a12.mp3str"
+
+[deps]
+
+source_file="res://assets/music/Schigisaga - AI Music.mp3"
+dest_files=["res://.godot/imported/Schigisaga - AI Music.mp3-ad90b6d67749bcee466d125f8a7f9a12.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
