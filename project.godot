@@ -19,7 +19,7 @@ config/icon="res://icon.svg"
 
 GameManager="*res://Globals/GameManager.gd"
 ScoreManager="*res://Globals/ScoreManager.gd"
-Eventmanager="*res://Globals/Eventmanager.gd"
+EventManager="*res://Globals/EventManager.gd"
 
 [display]
 
