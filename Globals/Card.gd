@@ -1,90 +1,99 @@
 extends TextureButton
-## Represents a single card in the memory game.
-## Handles its visual state (face up/down), textures, and interaction logic.
 
-var card_identifier: Variant = null ## Unique identifier for the card (e.g., its face texture).
-var face_texture: Texture2D = null ## Texture for the card's face.
-var back_texture: Texture2D = null ## Texture for the card's back (set by GameManager).
+# Signals
+signal flipped(card)
+signal matched(card)
+signal state_changed(card, is_face_up: bool)
 
-var is_flipped: bool = false ## Logical state: true if the card is face up.
-var is_matched: bool = false ## True if the card has been successfully matched.
+@export var card_identifier: Variant = null
+@export var face_texture: Texture2D = null
+@export var back_texture: Texture2D = null
+@export var matched_texture: Texture2D = preload("res://assets/ui/level_select_frame_select_128.png")
 
-var _is_programmatically_changing_state: bool = false ## Guard flag to prevent re-entrant calls during state changes.
+var _is_face_up: bool = false
+var _is_matched: bool = false
 
-## Centralized function to change card state (pressed/flipped) programmatically.
-## Ensures visual (button_pressed) and logical (is_flipped) states are synchronized.
-func _set_visual_and_logical_state(p_is_pressed: bool) -> void:
-	_is_programmatically_changing_state = true
-	self.button_pressed = p_is_pressed 
-	self.is_flipped = p_is_pressed    
-	call_deferred("_reset_programmatic_change_flag") 
+# Compatibility property for legacy code (read-only)
+var is_matched: bool:
+	get: return _is_matched
 
-## Resets the programmatic change guard flag.
-func _reset_programmatic_change_flag() -> void:
-	_is_programmatically_changing_state = false
+# ------------------------------------------------------------------ #
+# Public API                                                         #
+# ------------------------------------------------------------------ #
 
-## Called when the node enters the scene tree for the first time.
-func _ready() -> void:
-	self.toggled.connect(_on_toggled)
-
-## Initializes the card with its identifier and textures.
-## Called by GameManager during card creation.
-func setup_card(id: Variant, p_face_texture: Texture2D, p_back_texture: Texture2D) -> void:
+# One-time setup after instancing the card.
+func initialize(id: Variant, p_face: Texture2D, p_back: Texture2D) -> void:
 	card_identifier = id
-	face_texture = p_face_texture
-	back_texture = p_back_texture
-	self.button_pressed = false
+	face_texture = p_face
+	back_texture = p_back
+	_reset_visual()
 
-## Handles the 'toggled' signal emitted when the button_pressed state changes.
-## This is the core logic for user interaction and programmatic flips.
-func _on_toggled(button_is_pressed_now: bool) -> void:
-	if _is_programmatically_changing_state:
-		return 
-
-	if is_matched:
-		if not button_is_pressed_now: 
-			_set_visual_and_logical_state(true) 
+# Flip the card to show its face. When user-initiated, a signal is emitted.
+func flip_up(user_initiated: bool = false) -> void:
+	if _is_face_up or _is_matched:
 		return
-
-	if button_is_pressed_now: 
-		if self.is_flipped:
-			if not self.button_pressed: self.button_pressed = true
-			return
-
-		if not GameManager.can_player_flip_card():
-			_set_visual_and_logical_state(false) 
-			return
-		
-		self.is_flipped = true 
+	_is_face_up = true
+	texture_normal = face_texture
+	state_changed.emit(self, true)
+	if user_initiated:
+		flipped.emit(self)
 		EventManager.emit_event("card_flipped_by_user", self)
-	
-	else: 
-		# If the game is currently evaluating two flipped cards, prevent the player
-		# from manually hiding (re-toggling) this card. Keep it face-up.
-		if not GameManager.can_player_flip_card():
-			_set_visual_and_logical_state(true)
-			return
 
-		if not self.is_flipped:
-			if self.button_pressed: self.button_pressed = false
-			return
+# Flip the card back to its backside.
+func flip_down() -> void:
+	if not _is_face_up or _is_matched:
+		return
+	_is_face_up = false
+	texture_normal = back_texture
+	state_changed.emit(self, false)
+	disabled = false # Re-enable interaction
 
-		if GameManager.is_this_the_only_user_flipped_card(self):
-			_set_visual_and_logical_state(true) 
-			return
+# Locks the card in matched state and shows highlight frame.
+func mark_matched() -> void:
+	if _is_matched:
+		return
+	_is_matched = true
+	texture_normal = matched_texture
+	disabled = true
+	matched.emit(self)
 
-		self.is_flipped = false 
-		# Optional: EventManager.emit_event("card_returned_to_back_by_user", self)
+func is_face_up() -> bool:
+	return _is_face_up
 
-## Marks the card as successfully matched.
+# ------------------------------------------------------------------ #
+# Engine callbacks                                                   #
+# ------------------------------------------------------------------ #
+
+func _ready() -> void:
+	toggle_mode = false
+	pressed.connect(_on_pressed)
+	_reset_visual()
+
+# ------------------------------------------------------------------ #
+# Internal helpers                                                   #
+# ------------------------------------------------------------------ #
+
+func _on_pressed() -> void:
+	if GameManager and not GameManager.can_player_flip_card():
+		return
+	flip_up(true)
+	disabled = true # guard against double-clicks
+
+func _reset_visual() -> void:
+	_is_face_up = false
+	_is_matched = false
+	disabled = false
+	texture_normal = back_texture if back_texture else null
+
+# ------------------------------------------------------------------ #
+# Compatibility wrappers (will be removed after GameManager refactor)
+# ------------------------------------------------------------------ #
+
+func setup_card(id, p_face_texture, p_back_texture) -> void:
+	initialize(id, p_face_texture, p_back_texture)
+
 func set_as_matched() -> void:
-	is_matched = true
-	self.modulate = Color.MAGENTA 
-	self.disabled = true 
-	_set_visual_and_logical_state(true) 
+	mark_matched()
 
-## Flips the card back to its face-down state.
-## Called by GameManager (e.g., on a mismatch).
 func flip_back() -> void:
-	if not is_matched: 
-		_set_visual_and_logical_state(false)
+	flip_down()
