@@ -59,6 +59,12 @@ func _on_toggled(button_is_pressed_now: bool) -> void:
 		EventManager.emit_event("card_flipped_by_user", self)
 	
 	else: 
+		# If the game is currently evaluating two flipped cards, prevent the player
+		# from manually hiding (re-toggling) this card. Keep it face-up.
+		if not GameManager.can_player_flip_card():
+			_set_visual_and_logical_state(true)
+			return
+
 		if not self.is_flipped:
 			if self.button_pressed: self.button_pressed = false
 			return

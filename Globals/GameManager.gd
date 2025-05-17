@@ -175,47 +175,45 @@ func _on_card_flipped_by_user(card_node: CardScript) -> void:
 
 ## Processes the two currently flipped cards to check for a match or mismatch.
 func _process_flipped_cards() -> void:
-	if _first_flipped_card.card_identifier == _second_flipped_card.card_identifier:
-		_handle_match()
-	else:
-		_handle_mismatch()
+	# Determine whether the two selected cards match.
+	var is_match: bool = _first_flipped_card.card_identifier == _second_flipped_card.card_identifier
+	_handle_pair(is_match)
 
-## Handles the logic when two flipped cards are a match.
-func _handle_match() -> void:
-	_first_flipped_card.set_as_matched()
-	_second_flipped_card.set_as_matched()
-	
-	_pairs_found += 1
-	EventManager.emit_event("pair_found", {
-		"pairs_found": _pairs_found, 
-		"total_pairs": _total_pairs_to_find
-	})
-	print("GameManager: Pair found! (", _pairs_found, "/", _total_pairs_to_find, ")")
+## Unified handling for both match and mismatch with a 1-second reveal pause.
+func _handle_pair(is_match: bool) -> void:
+	var timer := get_tree().create_timer(1.0) # 1-second reveal
+	timer.timeout.connect(func():
+		if not (is_instance_valid(_first_flipped_card) and is_instance_valid(_second_flipped_card)):
+			_finalize_turn()
+			return
 
-	if _pairs_found == _total_pairs_to_find:
-		EventManager.emit_event("all_pairs_found")
-		print("GameManager: All pairs found! Congratulations!")
-	
+		if is_match:
+			_first_flipped_card.set_as_matched()
+			_second_flipped_card.set_as_matched()
+			_pairs_found += 1
+			EventManager.emit_event("pair_found", {
+				"pairs_found": _pairs_found,
+				"total_pairs": _total_pairs_to_find
+			})
+			print("GameManager: Pair found! (", _pairs_found, "/", _total_pairs_to_find, ")")
+
+			if _pairs_found == _total_pairs_to_find:
+				EventManager.emit_event("all_pairs_found")
+				print("GameManager: All pairs found! Congratulations!")
+		else:
+			EventManager.emit_event("mismatch_attempt")
+			print("GameManager: Mismatch detected.")
+			_first_flipped_card.flip_back()
+			_second_flipped_card.flip_back()
+
+		_finalize_turn()
+	)
+
+## Resets state & re-enables interaction after each turn.
+func _finalize_turn() -> void:
 	_clear_card_selection()
 	_can_flip_cards = true
-	_set_interaction_on_other_cards(false) # Re-enable other cards
-
-## Handles the logic when two flipped cards are a mismatch.
-func _handle_mismatch() -> void:
-	EventManager.emit_event("mismatch_attempt")
-	print("GameManager: Mismatch detected.")
-	
-	var timer = get_tree().create_timer(1.0) # 1 second delay to show cards
-	timer.timeout.connect(func():
-		if is_instance_valid(_first_flipped_card):
-			_first_flipped_card.flip_back()
-		if is_instance_valid(_second_flipped_card):
-			_second_flipped_card.flip_back()
-		
-		_clear_card_selection()
-		_can_flip_cards = true
-		_set_interaction_on_other_cards(false) # Re-enable other cards
-	)
+	_set_interaction_on_other_cards(false)
 
 ## Clears the references to the currently flipped cards.
 func _clear_card_selection() -> void:
