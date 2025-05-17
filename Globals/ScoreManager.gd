@@ -39,9 +39,9 @@ func reset_score_panel() -> void:
 	if _game_won_message_label:
 		_game_won_message_label.text = ""
 		_game_won_message_label.visible = false
-	# We only print an error if the main score label is missing, others are optional
+	# Wir geben nur eine Debug-Nachricht aus, wenn das Haupt-Score-Label fehlt
 	if not _total_score_label:
-		printerr("ScoreManager: _total_score_label für Score-Panel nicht korrekt gesetzt!")
+		print_debug("ScoreManager: _total_score_label ist nicht gesetzt. Das ist normal beim ersten Laden.")
 
 func _on_pair_found(_data: Dictionary) -> void:
 	_current_score += POINTS_PER_PAIR

@@ -8,7 +8,7 @@ signal state_changed(card, is_face_up: bool)
 @export var card_identifier: Variant = null
 @export var face_texture: Texture2D = null
 @export var back_texture: Texture2D = null
-@export var matched_texture: Texture2D = preload("res://assets/ui/level_select_frame_select_128.png")
+@export var matched_texture: Texture2D = TextureLoader.get_matched_texture()
 
 var _is_face_up: bool = false
 var _is_matched: bool = false

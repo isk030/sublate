@@ -6,70 +6,55 @@ const CARD_PAIR_COUNT: int = 4
 const DEFAULT_CARD_AREA_SIZE: int = 2 * CARD_PAIR_COUNT
 const CARD_GRID_COLUMNS: int = int(ceil(sqrt(float(DEFAULT_CARD_AREA_SIZE))))
 const MINIMUM_CARD_SIZE: int = 200
-const CARD_TEXTURE_PATHS: Array[String] = [
-	"res://assets/cards/cassettes.png",
-	"res://assets/cards/ghetto-blaster.png",
-	"res://assets/cards/spray-can.png",
-	"res://assets/cards/vinyl.png",
-]
 
-var card_area: Control
-var card_back_tex: Texture2D = load("res://assets/cards/level_select_frame_128.png")
+# Dependencies
+@onready var _card_script = preload("res://Globals/Card.gd")
 
-var _all_textures: Array[Texture2D] = []
+# Exported variables
+@export var card_area: Control
+@export var card_back_tex: Texture2D = preload("res://assets/cards/level_select_frame_128.png")
+
+# Private variables
 var _available_textures: Array[Texture2D] = []
-
-const CardScript = preload("res://Globals/Card.gd")
-
-enum GameState { FIRST, SECOND, PAUSE }
-var _state: int = GameState.FIRST
-var _first_flipped_card: CardScript = null
-var _second_flipped_card: CardScript = null
+var _state = GameState.States.FIRST
+var _first_flipped_card = null
+var _second_flipped_card = null
 var _pairs_found: int = 0
 var _total_pairs_to_find: int = 0
 
 # Engine ready
 func _ready() -> void:
 	randomize()
-	_load_textures()
+	# Warte bis der nächste Frame gerendert wurde
+	await get_tree().process_frame
+	reset_game()  # Dies ruft init_player_panel() auf
+
+# Public API
+func reset_game() -> void:
 	_reset_texture_pool()
+	if card_area and is_instance_valid(card_area):
+		init_game_elements()
+	init_player_panel()
 
 # Store reference to UI container
 func set_card_area_ref(area_node: Control) -> void:
 	card_area = area_node
 
-# Load unique textures
-func _load_textures() -> void:
-	_all_textures.clear()
-	for path in CARD_TEXTURE_PATHS:
-		var tex: Texture2D = load(path)
-		if tex:
-			_all_textures.append(tex)
-
-# Prepare pool with pairs
+# Prepare pool with pairs using TextureLoader
 func _reset_texture_pool() -> void:
-	_available_textures.clear()
 	_pairs_found = 0
-	_state = GameState.FIRST
-	var unique_needed: int = int(DEFAULT_CARD_AREA_SIZE / 2)
+	_state = GameState.States.FIRST
+	var unique_needed: int = int(DEFAULT_CARD_AREA_SIZE / 2.0)
 	_total_pairs_to_find = unique_needed
-	var pool: Array[Texture2D] = _all_textures.duplicate()
-	pool.shuffle()
-	for i in range(unique_needed):
-		var tex: Texture2D = pool.pop_front()
-		_available_textures.append_array([tex, tex])
-	_available_textures.shuffle()
+	_available_textures = TextureLoader.create_texture_pool(unique_needed)
 
 # Get next texture
 func get_random_unique_texture() -> Texture2D:
 	if _available_textures.is_empty():
 		_reset_texture_pool()
-		if _available_textures.is_empty(): 
+		if _available_textures.is_empty():
 			return null
-	var rand_idx = randi() % _available_textures.size()
-	var selected_tex = _available_textures[rand_idx]
-	_available_textures.remove_at(rand_idx)
-	return selected_tex
+	return _available_textures.pop_back()
 
 # Build board
 func init_game_elements() -> void:
@@ -89,34 +74,29 @@ func init_player_panel() -> void:
 
 # Create and add one card
 func _init_single_card(card_container: GridContainer) -> void:
-	var new_card: CardScript = CardScript.new()
+	var new_card = _card_script.new()
 	new_card.stretch_mode = TextureButton.STRETCH_SCALE
 	new_card.custom_minimum_size = Vector2(MINIMUM_CARD_SIZE, MINIMUM_CARD_SIZE)
 
 	var card_face_tex: Texture2D = get_random_unique_texture()
+	if card_face_tex == null:
+		push_error("Card face texture is missing. Cannot initialize card without a face texture.")
+		return
 
-	if card_face_tex:
-		new_card.initialize(card_face_tex, card_face_tex, card_back_tex)
-	else:
-		new_card.initialize(null, null, card_back_tex)
-		var fallback_rect = ColorRect.new()
-		fallback_rect.color = Color.MAGENTA
-		fallback_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		new_card.add_child(fallback_rect)
-
+	new_card.initialize(card_face_tex, card_face_tex, card_back_tex)
 	new_card.flipped.connect(_on_card_flipped)
 	card_container.add_child(new_card)
 
 # Handle first/second flip
-func _on_card_flipped(card: CardScript) -> void:
-	if _state == GameState.PAUSE or card.is_matched:
+func _on_card_flipped(card) -> void:
+	if _state == GameState.States.PAUSE or card.is_matched:
 		return
-	if _state == GameState.FIRST:
+	if _state == GameState.States.FIRST:
 		_first_flipped_card = card
-		_state = GameState.SECOND
+		_state = GameState.States.SECOND
 		return
 	_second_flipped_card = card
-	_state = GameState.PAUSE
+	_state = GameState.States.PAUSE
 	_set_interaction_on_other_cards(true)
 	_evaluate_pair()
 
@@ -149,10 +129,9 @@ func _evaluate_pair() -> void:
 # Reset turn
 func _finalize_turn() -> void:
 	_clear_card_selection()
-	_state = GameState.FIRST
+	_state = GameState.States.FIRST
 	_set_interaction_on_other_cards(false)
 
-# Clears the references to the currently flipped cards.
 func _clear_card_selection() -> void:
 	_first_flipped_card = null
 	_second_flipped_card = null
@@ -168,11 +147,10 @@ func _set_interaction_on_other_cards(p_disable: bool) -> void:
 		return
 
 	for child in card_container.get_children():
-		if child is CardScript:
-			var card: CardScript = child
+		if child.get_script() == _card_script:
+			var card = child
 			if not card.is_matched and card != _first_flipped_card and card != _second_flipped_card:
 				card.disabled = p_disable
 
-# Quick check for UI
 func can_player_flip_card() -> bool:
-	return _state != GameState.PAUSE
+	return _state != GameState.States.PAUSE

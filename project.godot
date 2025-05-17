@@ -17,9 +17,11 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-GameManager="*res://Globals/GameManager.gd"
+GameState="*res://Globals/GameState.gd"
+TextureLoader="*res://Globals/TextureLoader.gd"
 ScoreManager="*res://Globals/ScoreManager.gd"
 EventManager="*res://Globals/EventManager.gd"
+GameManager="*res://Globals/GameManager.gd"
 
 [display]
 
