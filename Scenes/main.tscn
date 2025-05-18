@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://5pj1h7kwtmcp"]
+[gd_scene load_steps=15 format=3 uid="uid://5pj1h7kwtmcp"]
 
 [ext_resource type="Script" uid="uid://1pojjuwqhnei" path="res://Scenes/Main.gd" id="1_6iyac"]
 [ext_resource type="PackedScene" uid="uid://b34i7gd50ri4c" path="res://Scenes/background_area.tscn" id="1_jjgbg"]
@@ -12,6 +12,8 @@
 [ext_resource type="Texture2D" uid="uid://bg4gr0d3brjxf" path="res://assets/images/ChatGPT Image 29. Apr. 2025, 12_12_47.png" id="8_344ge"]
 [ext_resource type="LabelSettings" uid="uid://cb8iojn2gnaxn" path="res://Scenes/label_80.tres" id="8_jkdf5"]
 [ext_resource type="LabelSettings" uid="uid://ddqfocf8jj42f" path="res://Scenes/label_60.tres" id="9_wsu2k"]
+[ext_resource type="AudioStream" uid="uid://d006xdnpgsvwq" path="res://assets/music/Heartbeat AI Music.mp3" id="13_fdnlq"]
+[ext_resource type="Script" uid="uid://c5ms6v210iwdp" path="res://Scenes/audio_stream_player_2d.gd" id="14_jkdf5"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -241,3 +243,8 @@ grow_vertical = 2
 theme_override_constants/h_separation = 20
 theme_override_constants/v_separation = 20
 columns = 3
+
+[node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="."]
+stream = ExtResource("13_fdnlq")
+autoplay = true
+script = ExtResource("14_jkdf5")

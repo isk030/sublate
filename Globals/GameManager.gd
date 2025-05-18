@@ -2,7 +2,7 @@ extends Node
 
 # Constants
 const DELAY_TIME: float = 1.0
-const CARD_PAIR_COUNT: int = 4
+const CARD_PAIR_COUNT: int = 8
 const DEFAULT_CARD_AREA_SIZE: int = 2 * CARD_PAIR_COUNT
 const CARD_GRID_COLUMNS: int = int(ceil(sqrt(float(DEFAULT_CARD_AREA_SIZE))))
 const MINIMUM_CARD_SIZE: int = 200
