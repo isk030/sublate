@@ -10,10 +10,15 @@ extends Control
 @onready var _menu: Control = $Menu
 
 func _ready() -> void:
+	# Stelle sicher, dass der Node Eingaben empfängt
+	print("Main scene ready")
+	print("Input map has ui_cancel:", InputMap.has_action("ui_cancel"))
 	_validate_nodes()
 	_initialize_ui()
 	_initialize_managers()
 	_connect_menu_signals()
+	# Aktiviere die Verarbeitung von Eingaben
+	set_process_input(true)
 
 func _validate_nodes() -> void:
 	var missing_nodes: Array[String] = []
@@ -34,9 +39,7 @@ func _validate_nodes() -> void:
 
 func _initialize_ui() -> void:
 	# Hide background area at start, show menu
-	_background_area.visible = false
-	if _menu:
-		_menu.visible = true
+	toggle_menu(true)
 
 func _initialize_managers() -> void:
 	_initialize_score_manager()
@@ -66,13 +69,35 @@ func _initialize_game_manager() -> void:
 func _connect_menu_signals() -> void:
 	if _menu:
 		_menu.game_start_requested.connect(_on_menu_start_pressed)
+		_menu.exit_requested.connect(_on_menu_exit_requested)
+		_menu.continue_requested.connect(_on_menu_continue_pressed)
 
 func _on_menu_start_pressed() -> void:
-	# Hide menu and show game area
-	if _menu:
-		_menu.visible = false
-	_background_area.visible = true
+	toggle_menu(false)
 	
 	# Reset game state if needed
 	if GameManager:
 		GameManager.reset_game()
+
+func _on_menu_continue_pressed() -> void:
+	toggle_menu(false)
+
+func _on_menu_exit_requested() -> void:
+	get_tree().quit()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		if event.keycode == KEY_ESCAPE and event.pressed and not event.echo:
+			print("ESC key pressed!")
+			var show_menu = not _menu.visible
+			toggle_menu(show_menu)
+			if show_menu:
+				_menu.set_opened_via_escape(true)
+			get_viewport().set_input_as_handled()
+
+func toggle_menu(show_menu: bool) -> void:
+	if _menu:
+		_menu.visible = show_menu
+		if not show_menu:
+			_menu.set_opened_via_escape(false)
+	_background_area.visible = not show_menu

@@ -31,6 +31,26 @@ window/size/mode=2
 window/size/resizable=false
 window/stretch/mode="viewport"
 
+[input]
+
+ui_cancel={
+"deadzone": 0.3,
+"events": [{
+"alt_pressed": false,
+"ctrl_pressed": false,
+"device": 0,
+"echo": false,
+"key_label": 0,
+"keycode": 4194305,
+"meta_pressed": false,
+"physical_keycode": 0,
+"pressed": false,
+"shift_pressed": false,
+"unicode": 0,
+"window_id": 0
+}]
+}
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
