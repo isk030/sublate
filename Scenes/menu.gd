@@ -1,99 +1,61 @@
+class_name Menu
 extends Control
 
-# Testfunktion, um zu überprüfen, ob das Skript geladen wird
-func _init() -> void:
-	print("Menu-Skript wurde geladen!")
+signal game_start_requested
+signal exit_requested
 
-var main_scene = null
+@onready var _start_button: Button = %StartButton
+@onready var _exit_button: Button = %ExitButton
+@onready var _error_label: Label = %ErrorLabel
+
+var _main_scene: PackedScene = preload("res://Scenes/main.tscn")
 
 func _ready() -> void:
-	print("=== Menu _ready() aufgerufen ===")
+	_validate_nodes()
+	_connect_signals()
+	_initialize_ui()
+
+func _validate_nodes() -> void:
+	var missing_nodes: Array[String] = []
 	
-	# Lade die Hauptszene
-	print("Lade Hauptszene...")
-	main_scene = preload("res://Scenes/main.tscn")
-	if main_scene == null:
-		print("FEHLER: Konnte die Hauptszene nicht laden!")
-		return
-	else:
-		print("✓ Hauptszene erfolgreich geladen")
-
-	# Zeige die Node-Hierarchie
-	print("\n=== Node-Hierarchie ===")
-	print("Pfad dieser Node: ", get_path())
-	print("Kinder dieser Node:")
-	for child in get_children():
-		print("- ", child.name, " (", child.get_class(), ")")
-		if child.name == "VBoxContainer":
-			print("  Kinder von VBoxContainer:")
-			for grandchild in child.get_children():
-				print("  - ", grandchild.name, " (", grandchild.get_class(), ")")
-
-	# Verbinde die Buttons
-	print("\nVerbinde Buttons...")
-	var start_button = $VBoxContainer/StartButton
-	var exit_button = $VBoxContainer/ExitButton
+	if not _start_button:
+		missing_nodes.append("StartButton")
+	if not _exit_button:
+		missing_nodes.append("ExitButton")
 	
-	if start_button:
-		print("✓ StartButton gefunden")
-		# Versuche, das Signal direkt zu verbinden
-		start_button.pressed.connect(_on_start_button_pressed)
-		print("✓ StartButton-Signal verbunden")
-	else:
-		print("FEHLER: StartButton nicht gefunden!")
-		# Versuche, den Pfad zu debuggen
-		var vbox = get_node_or_null("VBoxContainer")
-		if vbox:
-			print("VBoxContainer gefunden, Kinder:")
-			for child in vbox.get_children():
-				print("- ", child.name, " (", child.get_class(), ")")
-		else:
-			print("FEHLER: VBoxContainer nicht gefunden!")
-			print("Verfügbare Kinder:")
-			for child in get_children():
-				print("- ", child.name, " (", child.get_class(), ")")
+	if not missing_nodes.is_empty():
+		push_error("Fehlende Nodes: " + ", ".join(missing_nodes))
 
-	if exit_button:
-		print("✓ ExitButton gefunden")
-		exit_button.pressed.connect(_on_exit_button_pressed)
-	else:
-		print("FEHLER: ExitButton nicht gefunden!")
+func _connect_signals() -> void:
+	if _start_button:
+		_start_button.pressed.connect(_on_start_pressed)
+	if _exit_button:
+		_exit_button.pressed.connect(_on_exit_pressed)
 
-	print("\n=== Menu _ready() abgeschlossen ===\n")
+func _initialize_ui() -> void:
+	if _error_label:
+		_error_label.visible = false
 
-func _on_start_button_pressed() -> void:
-	print("\n--- Start-Button wurde gedrückt ---")
-	
-	if main_scene == null:
-		print("FEHLER: main_scene ist null!")
+func _on_start_pressed() -> void:
+	if not _main_scene:
+		_show_error("Hauptszene konnte nicht geladen werden")
 		return
 	
-	print("Versuche, die Hauptszene zu instanziieren...")
-	var main_instance = main_scene.instantiate()
-	
-	if main_instance == null:
-		print("FEHLER: Konnte die Hauptszene nicht instanziieren!")
+	var main_instance: Node = _main_scene.instantiate()
+	if not main_instance:
+		_show_error("Konnte Hauptszene nicht instanziieren")
 		return
 	
-	print("Hauptszene erfolgreich instanziiert")
-	
-	# Füge die Hauptszene zum Szenenbaum hinzu
-	var root = get_tree().root
-	if root == null:
-		print("FEHLER: Konnte den Wurzelknoten nicht finden!")
-		return
-	
-	print("Füge Hauptszene zum Szenenbaum hinzu...")
-	root.add_child(main_instance)
-	print("Hauptszene erfolgreich zum Szenenbaum hinzugefügt")
-	
-	# Verstecke das Menü
-	self.visible = false
-	print("Menü erfolgreich versteckt")
-	
-	# Optional: Entferne das Menü komplett, falls es nicht mehr benötigt wird
-	# queue_free()
-	print("--- Start-Button-Verarbeitung abgeschlossen ---\n")
+	get_tree().root.add_child(main_instance)
+	queue_free()
+	game_start_requested.emit()
 
-func _on_exit_button_pressed() -> void:
+func _on_exit_pressed() -> void:
+	exit_requested.emit()
 	get_tree().quit()
+
+func _show_error(message: String) -> void:
+	push_error(message)
+	if _error_label:
+		_error_label.text = "Fehler: " + message
+		_error_label.visible = true
