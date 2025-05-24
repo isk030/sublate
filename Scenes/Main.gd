@@ -7,11 +7,13 @@ extends Control
 @onready var _ui_factor_one: Label = $BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer/ColorRect/Label
 @onready var _ui_factor_two: Label = $BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer/ColorRect2/Label
 @onready var _ui_card_area: Control = $BackgroundArea/VBoxContainer/HBoxContainer/CardArea
+@onready var _menu: Control = $Menu
 
 func _ready() -> void:
 	_validate_nodes()
 	_initialize_ui()
 	_initialize_managers()
+	_connect_menu_signals()
 
 func _validate_nodes() -> void:
 	var missing_nodes: Array[String] = []
@@ -31,7 +33,10 @@ func _validate_nodes() -> void:
 		push_error("Fehlende UI-Nodes: " + ", ".join(missing_nodes))
 
 func _initialize_ui() -> void:
-	_background_area.visible = true
+	# Hide background area at start, show menu
+	_background_area.visible = false
+	if _menu:
+		_menu.visible = true
 
 func _initialize_managers() -> void:
 	_initialize_score_manager()
@@ -57,3 +62,17 @@ func _initialize_game_manager() -> void:
 	GameManager.set_card_area_ref(_ui_card_area)
 	GameManager.init_game_elements()
 	GameManager.init_player_panel()
+
+func _connect_menu_signals() -> void:
+	if _menu:
+		_menu.game_start_requested.connect(_on_menu_start_pressed)
+
+func _on_menu_start_pressed() -> void:
+	# Hide menu and show game area
+	if _menu:
+		_menu.visible = false
+	_background_area.visible = true
+	
+	# Reset game state if needed
+	if GameManager:
+		GameManager.reset_game()

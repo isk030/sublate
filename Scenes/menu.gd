@@ -8,8 +8,6 @@ signal exit_requested
 @onready var _exit_button: Button = %ExitButton
 @onready var _error_label: Label = %ErrorLabel
 
-var _main_scene: PackedScene = preload("res://Scenes/main.tscn")
-
 func _ready() -> void:
 	_validate_nodes()
 	_connect_signals()
@@ -37,17 +35,6 @@ func _initialize_ui() -> void:
 		_error_label.visible = false
 
 func _on_start_pressed() -> void:
-	if not _main_scene:
-		_show_error("Hauptszene konnte nicht geladen werden")
-		return
-	
-	var main_instance: Node = _main_scene.instantiate()
-	if not main_instance:
-		_show_error("Konnte Hauptszene nicht instanziieren")
-		return
-	
-	get_tree().root.add_child(main_instance)
-	queue_free()
 	game_start_requested.emit()
 
 func _on_exit_pressed() -> void:
