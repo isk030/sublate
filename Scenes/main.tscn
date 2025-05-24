@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://5pj1h7kwtmcp"]
+[gd_scene load_steps=17 format=3 uid="uid://5pj1h7kwtmcp"]
 
 [ext_resource type="Script" uid="uid://1pojjuwqhnei" path="res://Scenes/Main.gd" id="1_6iyac"]
 [ext_resource type="PackedScene" uid="uid://b34i7gd50ri4c" path="res://Scenes/background_area.tscn" id="1_jjgbg"]
@@ -14,6 +14,8 @@
 [ext_resource type="LabelSettings" uid="uid://ddqfocf8jj42f" path="res://Scenes/label_60.tres" id="9_wsu2k"]
 [ext_resource type="AudioStream" uid="uid://d006xdnpgsvwq" path="res://assets/music/Heartbeat AI Music.mp3" id="13_fdnlq"]
 [ext_resource type="Script" uid="uid://c5ms6v210iwdp" path="res://Scenes/audio_stream_player_2d.gd" id="14_jkdf5"]
+[ext_resource type="PackedScene" uid="uid://cikf0r1y6117c" path="res://Scenes/menu.tscn" id="15_wsu2k"]
+[ext_resource type="Script" uid="uid://ci1m22aycinjf" path="res://Scenes/menu.gd" id="16_k12tt"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -24,10 +26,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_6iyac")
 
-[node name="BackgroundArea" parent="." instance=ExtResource("1_jjgbg")]
-layout_mode = 1
-
-[node name="TextureRect" type="TextureRect" parent="BackgroundArea"]
+[node name="TextureRect" type="TextureRect" parent="."]
 modulate = Color(0.712129, 0.712129, 0.712129, 1)
 layout_mode = 1
 anchors_preset = 15
@@ -37,6 +36,9 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 texture = ExtResource("8_344ge")
+
+[node name="BackgroundArea" parent="." instance=ExtResource("1_jjgbg")]
+layout_mode = 1
 
 [node name="VBoxContainer" type="VBoxContainer" parent="BackgroundArea"]
 layout_mode = 0
@@ -248,3 +250,8 @@ columns = 3
 stream = ExtResource("13_fdnlq")
 autoplay = true
 script = ExtResource("14_jkdf5")
+
+[node name="Menu" parent="." instance=ExtResource("15_wsu2k")]
+z_index = 2
+layout_mode = 1
+script = ExtResource("16_k12tt")

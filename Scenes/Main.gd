@@ -6,8 +6,12 @@ extends Control
 
 @onready var ui_card_area: Control = $BackgroundArea/VBoxContainer/HBoxContainer/CardArea
 
+@onready var background_area = $BackgroundArea
+@onready var menu = $Menu
 
 func _ready() -> void:
+	background_area.visible = false
+	
 	
 	if ScoreManager != null:
 		ScoreManager.set_score_labels(ui_total_score_label, ui_factor_one, ui_factor_two)
