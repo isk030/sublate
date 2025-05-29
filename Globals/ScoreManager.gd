@@ -52,23 +52,31 @@ func _ready() -> void:
 	# 	_game_won_message_label.visible = false # Hide initially
 
 func reset_score_panel() -> void:
+	# Setze nur die UI-Elemente zurück, nicht den Score
+	if _total_score_label:
+		_total_score_label.text = str(_current_score)
+	_update_streak_display()
+	
+	if _game_won_message_label:
+		_game_won_message_label.text = ""
+		_game_won_message_label.visible = false
+	
+	print("ScoreManager: Score-Panel UI zurückgesetzt")
+	# Debug-Nachricht, wenn das Haupt-Score-Label fehlt
+	if not _total_score_label:
+		print_debug("ScoreManager: _total_score_label ist nicht gesetzt. Das ist normal beim ersten Laden.")
+
+# Diese Funktion wird aufgerufen, wenn ein neues Spiel beginnt
+func reset_game() -> void:
 	_current_score = 0
 	_pairs_found = 0
 	_current_streak = 0
 	_streak_multiplier = 1
 	_last_round_points = 0
 	
-	if _total_score_label:
-		_total_score_label.text = str(_current_score)
-	_update_streak_display()
-	
-	print("ScoreManager: Score-Panel zurückgesetzt")
-	if _game_won_message_label:
-		_game_won_message_label.text = ""
-		_game_won_message_label.visible = false
-	# Wir geben nur eine Debug-Nachricht aus, wenn das Haupt-Score-Label fehlt
-	if not _total_score_label:
-		print_debug("ScoreManager: _total_score_label ist nicht gesetzt. Das ist normal beim ersten Laden.")
+	# UI aktualisieren
+	reset_score_panel()
+	print("ScoreManager: Spiel zurückgesetzt - Score: 0")
 
 func _calculate_pair_found_passive_buff() -> int:
 	# Returns additional points based on previously found pairs, multipliziert mit Streak-Multiplikator
@@ -87,23 +95,26 @@ func _update_streak_display() -> void:
 		_factor_two_label.text = str(_last_round_points)
 
 func _on_pair_found(_data: Dictionary) -> void:
-	# Streak erhöhen und Multiplikator berechnen
-	_current_streak += 1
+	# Zuerst die Anzahl der gefundenen Paare erhöhen
+	_pairs_found += 1
+	
+	# Basispunkte für dieses Paar (100 für das erste Paar, dann +20 für jedes weitere)
+	# Dies sind die Punkte OHNE Multiplikator
+	var base_points = POINTS_PER_PAIR + ((_pairs_found - 1) * POINTS_PER_PREVIOUS_PAIR)
+	
+	# Streak erhöhen (entspricht der aktuellen Anzahl gefundener Paare)
+	_current_streak = _pairs_found
 	_streak_multiplier = min(_current_streak, MAX_STREAK_MULTIPLIER)
 	
-	# Punkte berechnen mit Streak-Multiplikator
-	var base_points = POINTS_PER_PAIR
-	var passive_buff = _pairs_found * POINTS_PER_PREVIOUS_PAIR
+	# Punkte für diese Runde berechnen (OHNE Multiplikator für die Anzeige)
+	_last_round_points = base_points  # OHNE Multiplikator für die Anzeige
 	
-	# Gesamtpunkte für diese Runde berechnen
-	if _current_streak > 1:  # Multiplikator erst ab dem 2. Treffer
-		_last_round_points = (base_points + passive_buff) * _streak_multiplier
-	else:
-		_last_round_points = base_points + passive_buff
-	
-	# Score und Zähler aktualisieren
-	_current_score += _last_round_points
-	_pairs_found += 1
+	# Gesamtscore ist die Summe aller Rundenpunkte MIT Multiplikator
+	# Für n gefundene Paare: Summe von k=1 bis n von (100 + 20*(k-1)) * k
+	# Das entspricht: 100*1 + 120*2 + 140*3 + ...
+	_current_score = 0
+	for k in range(1, _pairs_found + 1):
+		_current_score += (POINTS_PER_PAIR + (k-1) * POINTS_PER_PREVIOUS_PAIR) * k
 	
 	# UI aktualisieren
 	if _total_score_label:
@@ -114,19 +125,20 @@ func _on_pair_found(_data: Dictionary) -> void:
 	print("ScoreManager: Pair found! ", 
 		"Streak: %dx, " % _current_streak,
 		"Multiplier: %dx, " % _streak_multiplier,
-		"Base: %d + " % base_points, 
-		"Passive Buff: %d = " % passive_buff, 
+		"Base: %d, " % base_points, 
 		"Total: %d" % _last_round_points, 
 		" (Score: %d, Pairs: %d)" % [_current_score, _pairs_found])
 
 func _on_mismatch_attempt() -> void:
 	# Streak zurücksetzen bei Fehlversuch
 	if _current_streak > 0:
-		print("ScoreManager: Streak broken! Was at ", _current_streak, "x")
-	_current_streak = 0
-	_streak_multiplier = 1
-	_last_round_points = 0  # Keine Punkte bei Fehlversuch
-	_update_streak_display()  # Aktualisiere die Anzeige
+		print("ScoreManager: Streak broken! War bei ", _current_streak, "x")
+		_current_streak = 0
+		_streak_multiplier = 1
+		_last_round_points = 0  # Keine Punkte bei Fehlversuch
+		# Die Anzahl der gefundenen Paare wird NICHT zurückgesetzt, 
+		# da dies den globalen Score beeinflussen würde
+		_update_streak_display()  # Aktualisiere die Anzeige
 
 func _on_all_pairs_found() -> void:
 	# Update score for all pairs found

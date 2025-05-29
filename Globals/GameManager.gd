@@ -24,7 +24,11 @@ var _total_pairs_to_find: int = 0
 
 # Engine ready
 func _ready() -> void:
-	randomize()
+	# Initialisiere den Zufallsgenerator mit einem festen Seed für reproduzierbare Ergebnisse
+	var random_seed = 42
+	seed(random_seed)
+	print("Zufallsgenerator initialisiert mit Seed: ", random_seed)
+	
 	# Warte bis der nächste Frame gerendert wurde
 	await get_tree().process_frame
 	reset_game()  # Dies ruft init_player_panel() auf
@@ -34,7 +38,11 @@ func reset_game() -> void:
 	_reset_texture_pool()
 	if card_area and is_instance_valid(card_area):
 		init_game_elements()
-	init_player_panel()
+	# Verwende die neue reset_game-Funktion des ScoreManagers
+	if ScoreManager:
+		ScoreManager.reset_game()
+	else:
+		init_player_panel()  # Fallback für Abwärtskompatibilität
 
 # Store reference to UI container
 func set_card_area_ref(area_node: Control) -> void:
