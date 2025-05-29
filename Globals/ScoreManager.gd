@@ -15,7 +15,7 @@ var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
 # Konstanten
 const POINTS_PER_PAIR: int = 100
 const POINTS_PER_PREVIOUS_PAIR: int = 20
-const MAX_STREAK_MULTIPLIER: int = 5  # Maximaler Multiplikator
+const MAX_STREAK_MULTIPLIER: int = 10  # Maximaler Multiplikator (für längere Streaks)
 var _game_won_message_label: Label = null
 
 # Debug Funktionen
@@ -95,26 +95,32 @@ func _update_streak_display() -> void:
 		_factor_two_label.text = str(_last_round_points)
 
 func _on_pair_found(_data: Dictionary) -> void:
-	# Zuerst die Anzahl der gefundenen Paare erhöhen
+	# Streak um 1 erhöhen, wenn das letzte Paar erfolgreich war
+	# Ansonsten beginnt ein neuer Streak bei 1
+	if _current_streak > 0:
+		_current_streak += 1
+	else:
+		_current_streak = 1
+	
+	_streak_multiplier = min(_current_streak, MAX_STREAK_MULTIPLIER)
+	
+	# Anzahl der gefundenen Paare erhöhen
 	_pairs_found += 1
 	
 	# Basispunkte für dieses Paar (100 für das erste Paar, dann +20 für jedes weitere)
-	# Dies sind die Punkte OHNE Multiplikator
 	var base_points = POINTS_PER_PAIR + ((_pairs_found - 1) * POINTS_PER_PREVIOUS_PAIR)
-	
-	# Streak erhöhen (entspricht der aktuellen Anzahl gefundener Paare)
-	_current_streak = _pairs_found
-	_streak_multiplier = min(_current_streak, MAX_STREAK_MULTIPLIER)
 	
 	# Punkte für diese Runde berechnen (OHNE Multiplikator für die Anzeige)
 	_last_round_points = base_points  # OHNE Multiplikator für die Anzeige
 	
-	# Gesamtscore ist die Summe aller Rundenpunkte MIT Multiplikator
-	# Für n gefundene Paare: Summe von k=1 bis n von (100 + 20*(k-1)) * k
-	# Das entspricht: 100*1 + 120*2 + 140*3 + ...
-	_current_score = 0
-	for k in range(1, _pairs_found + 1):
-		_current_score += (POINTS_PER_PAIR + (k-1) * POINTS_PER_PREVIOUS_PAIR) * k
+	# Punkte für diese Runde MIT Multiplikator berechnen und zum Gesamtscore addieren
+	var points_this_round = base_points * _streak_multiplier
+	_current_score += points_this_round
+	
+	# Debug-Ausgabe
+	print("Paar ", _pairs_found, ": ", 
+		base_points, " x ", _streak_multiplier, " = ", points_this_round, 
+		" (Streak: ", _current_streak, "x, Gesamt: ", _current_score, ")")
 	
 	# UI aktualisieren
 	if _total_score_label:
@@ -136,8 +142,9 @@ func _on_mismatch_attempt() -> void:
 		_current_streak = 0
 		_streak_multiplier = 1
 		_last_round_points = 0  # Keine Punkte bei Fehlversuch
-		# Die Anzahl der gefundenen Paare wird NICHT zurückgesetzt, 
-		# da dies den globalen Score beeinflussen würde
+		# Die Anzahl der gefundenen Paare (_pairs_found) bleibt unverändert,
+		# damit die Gesamtpunktzahl erhalten bleibt.
+		# Der nächste Treffer beginnt wieder mit Streak 1
 		_update_streak_display()  # Aktualisiere die Anzeige
 
 func _on_all_pairs_found() -> void:
