@@ -3,13 +3,14 @@ extends Node
 # UI Referenzen
 @onready var _total_score_label: Label = null
 @onready var _factor_one_label: Label = null  # Für Streak-Anzeige
-@onready var _factor_two_label: Label = null  # Unbenutzt
+@onready var _factor_two_label: Label = null  # Punkte des letzten Zugs
 
 # Spielzustand
 var _current_score: int = 0
 var _pairs_found: int = 0
 var _current_streak: int = 0
 var _streak_multiplier: int = 1
+var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
 
 # Konstanten
 const POINTS_PER_PAIR: int = 100
@@ -55,6 +56,7 @@ func reset_score_panel() -> void:
 	_pairs_found = 0
 	_current_streak = 0
 	_streak_multiplier = 1
+	_last_round_points = 0
 	
 	if _total_score_label:
 		_total_score_label.text = str(_current_score)
@@ -73,14 +75,16 @@ func _calculate_pair_found_passive_buff() -> int:
 	return _pairs_found * POINTS_PER_PREVIOUS_PAIR * _streak_multiplier
 
 func _update_streak_display() -> void:
-	if not is_instance_valid(_factor_one_label):
-		push_warning("Factor One Label is not valid in _update_streak_display")
-		return
-		
-	if _current_streak > 1:  # Nur anzeigen, wenn Streak mindestens 2 ist
-		_factor_one_label.text = str(_current_streak)
-	else:
-		_factor_one_label.text = "1"  # Leeren, wenn kein aktiver Streak
+	# Zeige den aktuellen Streak an (mindestens 1)
+	var display_streak = max(1, _current_streak)
+	
+	# Aktualisiere das Streak-Label
+	if is_instance_valid(_factor_one_label):
+		_factor_one_label.text = str(display_streak)
+	
+	# Aktualisiere das Punkte-Label mit den Punkten des letzten Zugs
+	if is_instance_valid(_factor_two_label):
+		_factor_two_label.text = str(_last_round_points)
 
 func _on_pair_found(_data: Dictionary) -> void:
 	# Streak erhöhen und Multiplikator berechnen
@@ -88,12 +92,17 @@ func _on_pair_found(_data: Dictionary) -> void:
 	_streak_multiplier = min(_current_streak, MAX_STREAK_MULTIPLIER)
 	
 	# Punkte berechnen mit Streak-Multiplikator
-	var base_points = POINTS_PER_PAIR * _streak_multiplier
-	var passive_buff = _calculate_pair_found_passive_buff()
-	var points_earned = base_points + passive_buff
+	var base_points = POINTS_PER_PAIR
+	var passive_buff = _pairs_found * POINTS_PER_PREVIOUS_PAIR
+	
+	# Gesamtpunkte für diese Runde berechnen
+	if _current_streak > 1:  # Multiplikator erst ab dem 2. Treffer
+		_last_round_points = (base_points + passive_buff) * _streak_multiplier
+	else:
+		_last_round_points = base_points + passive_buff
 	
 	# Score und Zähler aktualisieren
-	_current_score += points_earned
+	_current_score += _last_round_points
 	_pairs_found += 1
 	
 	# UI aktualisieren
@@ -107,7 +116,7 @@ func _on_pair_found(_data: Dictionary) -> void:
 		"Multiplier: %dx, " % _streak_multiplier,
 		"Base: %d + " % base_points, 
 		"Passive Buff: %d = " % passive_buff, 
-		"Total: %d" % points_earned, 
+		"Total: %d" % _last_round_points, 
 		" (Score: %d, Pairs: %d)" % [_current_score, _pairs_found])
 
 func _on_mismatch_attempt() -> void:
@@ -116,7 +125,8 @@ func _on_mismatch_attempt() -> void:
 		print("ScoreManager: Streak broken! Was at ", _current_streak, "x")
 	_current_streak = 0
 	_streak_multiplier = 1
-	_update_streak_display()
+	_last_round_points = 0  # Keine Punkte bei Fehlversuch
+	_update_streak_display()  # Aktualisiere die Anzeige
 
 func _on_all_pairs_found() -> void:
 	# Update score for all pairs found
