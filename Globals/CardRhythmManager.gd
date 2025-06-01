@@ -4,10 +4,12 @@ extends Node
 signal card_flipped_in_rhythm(card)
 
 # Configuration
-@export var bpm: float = 120.0
-@export var cards_to_highlight: int = 2  # Number of cards to highlight each beat (2-3)
-@export var highlight_duration: float = 0.3  # How long the highlight should last in seconds
-@export var highlight_color: Color = Color(1.0, 0.2, 0.2, 0.7)  # Rot mit Transparenz
+@export var bpm: float = 95.0  # Geschwindigkeit des Beats
+# Immer genau 2 Karten hervorheben
+const CARDS_TO_HIGHLIGHT: int = 2
+@export var highlight_duration: float = 0.5  # Dauer der Hervorhebung
+@export var highlight_color: Color = Color(1.0, 0.2, 0.2, 0.7)  # Farbe der Hervorhebung
+@export var random_seed: int = 42  # Fester Seed für Reproduzierbarkeit
 
 # Debug
 @export var debug_mode: bool = true  # Set to true to see debug messages
@@ -24,21 +26,47 @@ var highlighted_cards: Array = []
 
 func _ready() -> void:
 	print("CardRhythmManager: Initializing...")
-	# Wait for the game to be ready
-	game_manager = get_node("/root/GameManager")
+	print("Debug mode: ", debug_mode)
+	
+	# Timer zuerst initialisieren
+	highlight_timer = Timer.new()
+	highlight_timer.one_shot = true
+	highlight_timer.process_callback = Timer.TIMER_PROCESS_PHYSICS
+	add_child(highlight_timer)
+	highlight_timer.timeout.connect(_on_highlight_timeout, CONNECT_DEFERRED)
+	
+	beat_timer = Timer.new()
+	beat_timer.one_shot = false
+	beat_timer.process_callback = Timer.TIMER_PROCESS_PHYSICS
+	add_child(beat_timer)
+	
+	# Warten, bis der Node im Szenenbaum ist
+	await get_tree().process_frame
+	
+	# GameManager suchen
+	game_manager = get_node_or_null("/root/GameManager")
 	if not game_manager:
 		printerr("CardRhythmManager: GameManager not found!")
 		return
+		
 	print("CardRhythmManager: Found GameManager at ", game_manager.get_path())
-	print("Debug mode: ", debug_mode)
-
-	# Wait a few frames to ensure everything is initialized
+	
+	# Auf Initialisierung des GameManagers warten
+	if game_manager.has_method("is_initialized") and not game_manager.is_initialized:
+		await game_manager.initialized
+	
+	# Zusätzliche Frames warten, um sicherzustellen, dass alles initialisiert ist
 	await get_tree().process_frame
 	await get_tree().process_frame
 	
-	print("GameManager card_area: ", game_manager.card_area)
+	if not is_instance_valid(game_manager) or not is_inside_tree():
+		printerr("CardRhythmManager: GameManager or self no longer valid!")
+		return
 	
-	# Try to get the card container
+	# Karten-Container finden
+	if game_manager.has_signal("card_area_ready"):
+		await game_manager.card_area_ready
+	
 	if game_manager.card_area:
 		card_container = game_manager.card_area.get_node_or_null("GridContainer")
 		print("Card container found: ", card_container != null)
@@ -48,42 +76,42 @@ func _ready() -> void:
 	
 	if not card_container:
 		printerr("CardRhythmManager: GridContainer not found in card area!")
-		# Try to find the GridContainer in the scene
 		card_container = get_tree().get_root().find_child("GridContainer", true, false)
 		if card_container:
 			print("Found GridContainer in scene tree")
 		else:
 			printerr("Could not find GridContainer anywhere!")
-	
-	# Initialize timers
-	highlight_timer = Timer.new()
-	highlight_timer.one_shot = true
-	highlight_timer.timeout.connect(_on_highlight_timeout)
-	add_child(highlight_timer)
-	
-	beat_timer = Timer.new()
-	beat_timer.timeout.connect(_on_beat)
-	add_child(beat_timer)
-	
-	# Connect the card_flipped_in_rhythm signal
+			return
+
+	# Signal verbinden
 	if not card_flipped_in_rhythm.is_connected(_on_card_flipped_in_rhythm):
-		card_flipped_in_rhythm.connect(_on_card_flipped_in_rhythm)
+		card_flipped_in_rhythm.connect(_on_card_flipped_in_rhythm, CONNECT_DEFERRED)
 	
-	# Start the beat
+	# Beat starten
 	print("Starting beat timer...")
-	start_beat()
-	if beat_timer and beat_timer.is_stopped():
-		print("WARNING: Beat timer failed to start!")
-	else:
-		print("Beat timer started successfully")
+	call_deferred("start_beat")
 
 func start_beat() -> void:
-	if beat_timer.is_stopped():
-		var beat_interval: float = 60.0 / bpm
-		beat_timer.wait_time = beat_interval
-		beat_timer.start()
-		# Trigger first beat immediately
-		_on_beat()
+	if not beat_timer:
+		printerr("Beat timer not initialized!")
+		return
+		
+	var beat_interval: float = 60.0 / bpm
+	if debug_mode:
+		print("Starting beat with interval: ", beat_interval, " seconds (BPM: ", bpm, ")")
+	
+	beat_timer.stop()  # Sicherstellen, dass der Timer gestoppt ist
+	beat_timer.wait_time = beat_interval
+	beat_timer.one_shot = false  # Wichtig für wiederholte Ausführung
+	beat_timer.autostart = false
+	beat_timer.process_callback = Timer.TIMER_PROCESS_PHYSICS  # Präzisere Timer
+	
+	if not beat_timer.is_connected("timeout", _on_beat):
+		beat_timer.timeout.connect(_on_beat, CONNECT_DEFERRED)
+	
+	beat_timer.start()
+	# Ersten Beat sofort auslösen
+	call_deferred("_on_beat")
 
 func stop_beat() -> void:
 	if beat_timer:
@@ -124,13 +152,26 @@ func _on_card_flipped_in_rhythm(card: Node) -> void:
 		print("WARNING: Invalid card in _on_card_flipped_in_rhythm: ", card)
 
 func _on_beat() -> void:
+	if not is_inside_tree():
+		return
+		
 	if debug_mode:
-		print("\n--- New Beat ---")
+		print("\n--- New Beat (Time: ", Time.get_ticks_msec() / 1000.0, ") ---")
 		print("CardRhythmManager: Starting new beat, current highlighted cards: ", highlighted_cards.size())
 		
 	if not card_container or not is_instance_valid(card_container):
-		printerr("CardRhythmManager: Card container not found or invalid!")
+		if debug_mode:
+			printerr("CardRhythmManager: Card container not found or invalid!")
 		return
+		
+	# Sicherstellen, dass wir im Haupt-Thread arbeiten
+	if not is_inside_tree():
+		call_deferred("_on_beat")
+		return
+		
+	# Random Seed setzen für konsistente Ergebnisse
+	var rng = RandomNumberGenerator.new()
+	rng.seed = hash(str(random_seed) + str(Time.get_ticks_msec() / 1000.0))
 	
 	# Clear any existing highlights first
 	_clear_highlights()
@@ -151,32 +192,54 @@ func _on_beat() -> void:
 		print("Found ", valid_cards.size(), " valid cards out of ", total_children)
 	
 	# If not enough cards, do nothing
-	if valid_cards.size() < cards_to_highlight:
+	if valid_cards.size() < CARDS_TO_HIGHLIGHT:
 		if debug_mode:
-			print("Not enough valid cards to highlight (need ", cards_to_highlight, ")")
+			print("Not enough valid cards to highlight (need ", CARDS_TO_HIGHLIGHT, ")")
 		return
 	
-	# Select random cards
-	valid_cards.shuffle()
-	var cards_to_highlight_this_beat = min(cards_to_highlight, valid_cards.size())
+	# Sicherstellen, dass wir genügend Karten haben
+	if valid_cards.size() < CARDS_TO_HIGHLIGHT:
+		if debug_mode:
+			print("Not enough valid cards to highlight (need ", CARDS_TO_HIGHLIGHT, ")")
+		return
 	
-	# Clear the array before adding new cards
+	if debug_mode:
+		print("Highlighting ", CARDS_TO_HIGHLIGHT, " cards this beat")
+	
+	# Clear any existing highlights first
+	_clear_highlights()
 	highlighted_cards.clear()
 	
-	# Add new cards to highlight
-	for i in range(cards_to_highlight_this_beat):
-		var card = valid_cards[i]
-		highlighted_cards.append(card)
-		
-		# Apply red highlight to card
-		if card is CanvasItem and is_instance_valid(card):
-			# Save the original color if not already saved
-			if not card.has_meta("original_modulate"):
-				card.set_meta("original_modulate", card.modulate)
-			# Apply highlight color
-			card.modulate = highlight_color
-			if debug_mode:
-				print("Highlighted card: ", card.name)
+	# Mischen der gültigen Karten mit Fisher-Yates Shuffle
+	var shuffled_cards = valid_cards.duplicate()
+	for i in range(shuffled_cards.size() - 1, 0, -1):
+		var j = rng.randi() % (i + 1)
+		var temp = shuffled_cards[i]
+		shuffled_cards[i] = shuffled_cards[j]
+		shuffled_cards[j] = temp
+	
+	# Nur die ersten 2 Karten auswählen
+	shuffled_cards.resize(CARDS_TO_HIGHLIGHT)
+	
+	# Die ausgewählten Karten hervorheben
+	var has_valid_cards = false
+	for card in shuffled_cards:
+		if card and is_instance_valid(card):
+			has_valid_cards = true
+			highlighted_cards.append(card)
+			
+			# Apply red highlight to card
+			if card is CanvasItem:
+				# Save the original color if not already saved
+				if not card.has_meta("original_modulate"):
+					card.set_meta("original_modulate", card.modulate)
+				# Apply highlight color
+				card.modulate = highlight_color
+				if debug_mode:
+					print("Highlighted card: ", card.name)
+	
+	if not has_valid_cards and debug_mode:
+		print("No valid cards to highlight")
 	
 	# Set timer to clear highlights
 	highlight_timer.start(highlight_duration)

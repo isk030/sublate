@@ -99,8 +99,8 @@ func _update_ui() -> void:
 	if _factor_two_label:
 		# Calculate base points (100 for first pair, +20 for each previous pair)
 		var base_points = 100 + (max(0, _pairs_found - 1) * 20)
-		# Add heat bonus if in rhythm
-		var heat_bonus = 100 if _current_streak > 0 and _current_streak == max(1, _current_streak) else 0
+		# Add heat bonus if both cards were flipped in rhythm
+		var heat_bonus = 100 if _current_streak > 0 and _last_round_points > (base_points * max(1, _current_streak)) else 0
 		# Total flat points (base + heat bonus)
 		var total_flat_points = base_points + heat_bonus
 		_factor_two_label.text = str(total_flat_points)

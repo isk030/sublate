@@ -255,6 +255,5 @@ layout_mode = 1
 
 [node name="Node" type="Node" parent="."]
 script = ExtResource("16_k12tt")
-bpm = 95.0
 highlight_duration = 2.0
 debug_mode = false

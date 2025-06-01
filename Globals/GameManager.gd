@@ -40,14 +40,22 @@ func _ready() -> void:
 		card_rhythm_manager = CardRhythmManager.new()
 		card_rhythm_manager.name = "CardRhythmManager"
 		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
-		get_node("/root").add_child(card_rhythm_manager)
+		# Use call_deferred to add the child safely
+		get_node("/root").call_deferred("add_child", card_rhythm_manager)
 		print("Created and added CardRhythmManager to scene tree")
 		
-		# Print the full path to help with debugging
-		print("CardRhythmManager path: ", card_rhythm_manager.get_path())
+		# Print the full path after the node is added
+		call_deferred("_print_rhythm_manager_path")
 	else:
 		print("Found existing CardRhythmManager")
 		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
+
+# Helper function to print the path after the node is added
+func _print_rhythm_manager_path() -> void:
+	if card_rhythm_manager:
+		print("CardRhythmManager path: ", card_rhythm_manager.get_path())
+	else:
+		print("CardRhythmManager not found after creation")
 	
 	# Connect signals
 	if card_rhythm_manager.has_signal("card_flipped_in_rhythm"):
