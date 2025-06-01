@@ -96,22 +96,29 @@ func start_beat() -> void:
 		printerr("Beat timer not initialized!")
 		return
 		
+	# Berechne das Intervall in Sekunden basierend auf BPM
+	# 60 Sekunden / BPM = Intervall in Sekunden
 	var beat_interval: float = 60.0 / bpm
+	
 	if debug_mode:
 		print("Starting beat with interval: ", beat_interval, " seconds (BPM: ", bpm, ")")
 	
-	beat_timer.stop()  # Sicherstellen, dass der Timer gestoppt ist
+	# Timer zurücksetzen und konfigurieren
+	beat_timer.stop()
 	beat_timer.wait_time = beat_interval
-	beat_timer.one_shot = false  # Wichtig für wiederholte Ausführung
-	beat_timer.autostart = false
-	beat_timer.process_callback = Timer.TIMER_PROCESS_PHYSICS  # Präzisere Timer
+	beat_timer.one_shot = false  # Für wiederholte Ausführung
+	beat_timer.process_callback = Timer.TIMER_PROCESS_PHYSICS  # Präzisere Zeitsteuerung
 	
-	if not beat_timer.is_connected("timeout", _on_beat):
+	# Sicherstellen, dass die Verbindung nur einmal hergestellt wird
+	if beat_timer.timeout.get_connections().size() == 0:
 		beat_timer.timeout.connect(_on_beat, CONNECT_DEFERRED)
 	
+	# Timer starten
 	beat_timer.start()
-	# Ersten Beat sofort auslösen
-	call_deferred("_on_beat")
+	
+	# Ersten Beat sofort auslösen, aber mit einer kleinen Verzögerung,
+	# um sicherzustellen, dass alles korrekt initialisiert ist
+	call_deferred("call_deferred", "_on_beat")
 
 func stop_beat() -> void:
 	if beat_timer:
@@ -151,32 +158,37 @@ func _on_card_flipped_in_rhythm(card: Node) -> void:
 	else:
 		print("WARNING: Invalid card in _on_card_flipped_in_rhythm: ", card)
 
+var _is_processing_beat: bool = false
+
 func _on_beat() -> void:
+	if _is_processing_beat:
+		if debug_mode:
+			print("Beat processing already in progress, skipping this beat")
+		return
+	
 	if not is_inside_tree():
+		call_deferred("_on_beat")  # Im nächsten Frame erneut versuchen
 		return
 		
+	_is_processing_beat = true
+	
 	if debug_mode:
 		print("\n--- New Beat (Time: ", Time.get_ticks_msec() / 1000.0, ") ---")
 		print("CardRhythmManager: Starting new beat, current highlighted cards: ", highlighted_cards.size())
-		
-	if not card_container or not is_instance_valid(card_container):
-		if debug_mode:
-			printerr("CardRhythmManager: Card container not found or invalid!")
-		return
-		
-	# Sicherstellen, dass wir im Haupt-Thread arbeiten
-	if not is_inside_tree():
-		call_deferred("_on_beat")
-		return
-		
-	# Random Seed setzen für konsistente Ergebnisse
-	var rng = RandomNumberGenerator.new()
-	rng.seed = hash(str(random_seed) + str(Time.get_ticks_msec() / 1000.0))
 	
-	# Clear any existing highlights first
+	# Bestehende Hervorhebungen entfernen
 	_clear_highlights()
 	
-	# Get all valid cards (not matched and not already face up)
+	# Sicherstellen, dass der Card-Container gültig ist
+	if not card_container or not is_instance_valid(card_container):
+		card_container = get_tree().get_root().find_child("GridContainer", true, false)
+		if not card_container or not is_instance_valid(card_container):
+			if debug_mode:
+				printerr("CardRhythmManager: Card container not found or invalid!")
+			_is_processing_beat = false
+			return
+	
+	# Gültige Karten sammeln (nicht gefunden und nicht aufgedeckt)
 	var valid_cards: Array[Node] = []
 	var total_children = card_container.get_child_count()
 	
@@ -191,69 +203,79 @@ func _on_beat() -> void:
 	if debug_mode:
 		print("Found ", valid_cards.size(), " valid cards out of ", total_children)
 	
-	# If not enough cards, do nothing
+	# Wenn nicht genügend Karten vorhanden sind, nichts tun
 	if valid_cards.size() < CARDS_TO_HIGHLIGHT:
 		if debug_mode:
 			print("Not enough valid cards to highlight (need ", CARDS_TO_HIGHLIGHT, ")")
+		_is_processing_beat = false
 		return
 	
-	# Sicherstellen, dass wir genügend Karten haben
-	if valid_cards.size() < CARDS_TO_HIGHLIGHT:
-		if debug_mode:
-			print("Not enough valid cards to highlight (need ", CARDS_TO_HIGHLIGHT, ")")
-		return
+	# Zufallsgenerator mit aktuellem Seed initialisieren
+	var rng = RandomNumberGenerator.new()
+	rng.seed = hash(str(random_seed) + str(Time.get_ticks_msec() / 1000.0))
 	
-	if debug_mode:
-		print("Highlighting ", CARDS_TO_HIGHLIGHT, " cards this beat")
-	
-	# Clear any existing highlights first
-	_clear_highlights()
-	highlighted_cards.clear()
-	
-	# Mischen der gültigen Karten mit Fisher-Yates Shuffle
-	var shuffled_cards = valid_cards.duplicate()
-	for i in range(shuffled_cards.size() - 1, 0, -1):
+	# Karten mischen mit Fisher-Yates Shuffle
+	for i in range(valid_cards.size() - 1, 0, -1):
 		var j = rng.randi() % (i + 1)
-		var temp = shuffled_cards[i]
-		shuffled_cards[i] = shuffled_cards[j]
-		shuffled_cards[j] = temp
+		var temp = valid_cards[i]
+		valid_cards[i] = valid_cards[j]
+		valid_cards[j] = temp
 	
-	# Nur die ersten 2 Karten auswählen
-	shuffled_cards.resize(CARDS_TO_HIGHLIGHT)
-	
-	# Die ausgewählten Karten hervorheben
-	var has_valid_cards = false
-	for card in shuffled_cards:
+	# Nur die ersten CARDS_TO_HIGHLIGHT Karten auswählen
+	highlighted_cards.clear()
+	for i in range(min(CARDS_TO_HIGHLIGHT, valid_cards.size())):
+		var card = valid_cards[i]
 		if card and is_instance_valid(card):
-			has_valid_cards = true
 			highlighted_cards.append(card)
-			
-			# Apply red highlight to card
-			if card is CanvasItem:
-				# Save the original color if not already saved
-				if not card.has_meta("original_modulate"):
-					card.set_meta("original_modulate", card.modulate)
-				# Apply highlight color
-				card.modulate = highlight_color
-				if debug_mode:
-					print("Highlighted card: ", card.name)
 	
-	if not has_valid_cards and debug_mode:
-		print("No valid cards to highlight")
-	
-	# Set timer to clear highlights
-	highlight_timer.start(highlight_duration)
-	
-	# Debug output
 	if debug_mode:
+		print("Selected ", highlighted_cards.size(), " cards to highlight")
+	
+	# Sicherstellen, dass wir nicht mehr als CARDS_TO_HIGHLIGHT Karten haben
+	if highlighted_cards.size() > CARDS_TO_HIGHLIGHT:
+		printerr("Too many cards selected: ", highlighted_cards.size())
+		highlighted_cards = highlighted_cards.slice(0, CARDS_TO_HIGHLIGHT)
+	
+	# Hervorheben der ausgewählten Karten
+	for card in highlighted_cards:
+		if card is CanvasItem:
+			# Originalfarbe speichern, falls noch nicht geschehen
+			if not card.has_meta("original_modulate"):
+				card.set_meta("original_modulate", card.modulate)
+			# Hervorhebungsfarbe anwenden
+			card.modulate = highlight_color
+			if debug_mode:
+				print("Highlighted card: ", card.name)
+	
+	# Timer zum Entfernen der Hervorhebungen starten
+	if highlight_timer:
+		# Stoppe den Timer und entferne alle ausstehenden Timeout-Signale
+		highlight_timer.stop()
+		# Warte bis zum nächsten Frame, um sicherzustellen, dass alle ausstehenden Timeouts verarbeitet wurden
+		await get_tree().process_frame
+		# Starte den Timer neu
+		highlight_timer.start(highlight_duration)
+		if debug_mode:
+			print("Started highlight timer for ", highlight_duration, " seconds")
+	else:
+		printerr("Highlight timer is not initialized!")
+	
+	# Debug-Ausgabe nach dem Hervorheben
+	if debug_mode and highlighted_cards.size() > 0:
 		var card_names = []
 		for card in highlighted_cards:
 			if is_instance_valid(card):
 				card_names.append(card.name)
-		print("Cards currently highlighted (", highlighted_cards.size(), "): ", card_names)
+		print("Successfully highlighted ", card_names.size(), " cards: ", ", ".join(card_names))
+	
+	_is_processing_beat = false
 
 func _on_highlight_timeout() -> void:
+	if debug_mode:
+		print("Highlight timeout triggered, clearing highlights...")
 	_clear_highlights()
+	if debug_mode:
+		print("Highlights cleared after timeout")
 
 func is_card_highlighted(card: Node) -> bool:
 	var is_highlighted = card in highlighted_cards
@@ -265,6 +287,9 @@ func is_card_highlighted(card: Node) -> bool:
 func _clear_highlights() -> void:
 	if debug_mode:
 		print("Clearing highlights from ", highlighted_cards.size(), " cards")
+	
+	# Erstelle eine Kopie der zu löschenden Karten, um sie nach dem Zurücksetzen zu überprüfen
+	var cards_to_clear = highlighted_cards.duplicate()
 	
 	# Process all currently highlighted cards
 	for i in range(highlighted_cards.size() - 1, -1, -1):
@@ -281,9 +306,18 @@ func _clear_highlights() -> void:
 					card.modulate = original_color
 					if debug_mode:
 						print("Removed highlight from card: ", card.name)
+		else:
+			if debug_mode:
+				print("Card is not a CanvasItem: ", card.name)
 	
 	# Clear the array after processing all cards
 	highlighted_cards.clear()
+	
+	# Debug: Überprüfe, ob alle Karten zurückgesetzt wurden
+	if debug_mode:
+		for card in cards_to_clear:
+			if is_instance_valid(card) and card is CanvasItem and card.modulate == highlight_color:
+				printerr("Card still has highlight color after clear: ", card.name)
 
 func set_bpm(new_bpm: float) -> void:
 	if new_bpm > 0:

@@ -4,10 +4,10 @@ class_name BaseModifier
 # Gibt ein Dictionary zurück mit:
 # - points: Die modifizierten Punkte
 # - description: Optionaler Beschreibungstext
-func apply(base_points: int, context: Dictionary) -> Dictionary:
+func apply(_base_points: int, _context: Dictionary) -> Dictionary:
 	push_error("apply() muss in der Kindklasse überschrieben werden!")
 	return {
-		"points": base_points,
+		"points": _base_points,
 		"description": ""
 	}
 

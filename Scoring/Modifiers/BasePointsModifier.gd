@@ -1,6 +1,6 @@
 extends "res://Scoring/Modifiers/BaseModifier.gd"
 
-func apply(base_points: int, context: Dictionary) -> Dictionary:
+func apply(_base_points: int, context: Dictionary) -> Dictionary:
 	var pairs_found = context.get("pairs_found", 1)
 	var points = 100 + ((pairs_found - 1) * 20)
 	

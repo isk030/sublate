@@ -1,10 +1,10 @@
 extends Node
 
 # Importe
-const BasePointsModifier = preload("res://Scoring/Modifiers/BasePointsModifier.gd")
-const StreakModifier = preload("res://Scoring/Modifiers/StreakModifier.gd")
-const HeatBonusModifier = preload("res://Scoring/Modifiers/HeatBonusModifier.gd")
-const ModifierManager = preload("res://Scoring/ModifierManager.gd")
+const BASE_POINTS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/BasePointsModifier.gd")
+const STREAK_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/StreakModifier.gd")
+const HEAT_BONUS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/HeatBonusModifier.gd")
+const MODIFIER_MANAGER_SCRIPT = preload("res://Scoring/ModifierManager.gd")
 
 # Modifier-Instanzen
 var _modifier_manager = null
@@ -44,12 +44,12 @@ func set_score_labels(total_label: Label, factor1_label: Label, factor2_label: L
 
 func _init() -> void:
 	# Modifier initialisieren
-	_modifier_manager = ModifierManager.new()
+	_modifier_manager = MODIFIER_MANAGER_SCRIPT.new()
 	
 	# Modifier erstellen
-	_base_points_modifier = BasePointsModifier.new()
-	_streak_modifier = StreakModifier.new()
-	_heat_bonus_modifier = HeatBonusModifier.new()
+	_base_points_modifier = BASE_POINTS_MODIFIER_SCRIPT.new()
+	_streak_modifier = STREAK_MODIFIER_SCRIPT.new()
+	_heat_bonus_modifier = HEAT_BONUS_MODIFIER_SCRIPT.new()
 	
 	# Modifier in der richtigen Reihenfolge hinzufügen
 	_modifier_manager.add_modifier(_base_points_modifier)
