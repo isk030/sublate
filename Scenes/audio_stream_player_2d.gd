@@ -16,7 +16,7 @@ func _ready() -> void:
 	# AudioStream laden und abspielen
 	stream = load(chosen_path) as AudioStream
 	
-	# play()
+	play()
 	
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:

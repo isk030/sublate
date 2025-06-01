@@ -33,12 +33,24 @@ func create_texture_pool(pair_count: int) -> Array[Texture2D]:
 	if unique_textures.size() < pair_count:
 		push_error("TextureLoader: Not enough unique textures (%d needed, %d available)." % [pair_count, unique_textures.size()])
 		return []
-	unique_textures.shuffle()
+	
+	# Sicherstellen, dass wir einen konsistenten Seed haben
+	var rng = RandomNumberGenerator.new()
+	rng.seed = 42  # Gleicher Seed wie im GameManager
+	
+	# Mischen der einzigartigen Texturen
+	var shuffled_textures = unique_textures.duplicate()
+	shuffled_textures.sort_custom(func(a, b): return rng.randi() % 2 == 0)
+	
+	# Erstelle Paare
 	var pool: Array[Texture2D] = []
 	for i in range(pair_count):
-		var t: Texture2D = unique_textures[i]
+		var t: Texture2D = shuffled_textures[i % shuffled_textures.size()]
 		pool.append_array([t, t])
-	pool.shuffle()
+	
+	# Mischen der Paare mit dem gleichen Seed
+	pool.sort_custom(func(a, b): return rng.randi() % 2 == 0)
+	
 	return pool
 
 # Get the matched texture for cards
