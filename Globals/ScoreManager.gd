@@ -97,7 +97,13 @@ func _update_ui() -> void:
 	if _factor_one_label:
 		_factor_one_label.text = str(max(1, _current_streak))
 	if _factor_two_label:
-		_factor_two_label.text = str(_last_round_points)
+		# Calculate base points (100 for first pair, +20 for each previous pair)
+		var base_points = 100 + (max(0, _pairs_found - 1) * 20)
+		# Add heat bonus if in rhythm
+		var heat_bonus = 100 if _current_streak > 0 and _current_streak == max(1, _current_streak) else 0
+		# Total flat points (base + heat bonus)
+		var total_flat_points = base_points + heat_bonus
+		_factor_two_label.text = str(total_flat_points)
 
 func _on_pair_found(data: Dictionary) -> void:
 	print("\n--- ScoreManager: pair_found event received ---")
@@ -110,25 +116,28 @@ func _on_pair_found(data: Dictionary) -> void:
 	# Paarzähler erhöhen
 	_pairs_found = data.get("pairs_found", _pairs_found + 1)
 	
-	# Kontext für die Modifier erstellen
-	var context = {
-		"pairs_found": _pairs_found,
-		"current_streak": _current_streak,
-		"heat_bonus": data.get("heat_bonus", 0),
-		"in_rhythm": data.get("heat_bonus", 0) > 0
-	}
+	# Basis-Punkte berechnen (100 + 20 pro bereits gefundenes Paar)
+	var base_points = 100 + (max(0, _pairs_found - 1) * 20)
 	
-	# Punkte mit allen Modifiern berechnen
-	var result = _modifier_manager.apply_modifiers(0, context)  # Start mit 0, da BasePointsModifier die Basis-Punkte berechnet
-	_last_round_points = result.points
+	# Heat Bonus prüfen (100 Punkte wenn im Rhythmus)
+	var heat_bonus = 100 if data.get("heat_bonus", 0) > 0 else 0
+	
+	# Gesamt-Punkte für diese Runde (ohne Multiplikator)
+	var round_points = base_points + heat_bonus
+	
+	# Punkte mit Streak-Multiplikator berechnen
+	_last_round_points = round_points * max(1, _current_streak)
 	_current_score += _last_round_points
 	
 	# Debug-Ausgabe
 	print("Paar ", _pairs_found, ":")
-	for desc in result.descriptions:
-		print("  ", desc)
-	print("  Gesamt: ", _last_round_points, " Punkte (Score: ", _current_score, ")")
-	print("  (Streak: ", _current_streak, "x)")
+	print("  Basis: ", base_points)
+	if heat_bonus > 0:
+		print("  + Heat Bonus: ", heat_bonus)
+	print("  * Streak: ", max(1, _current_streak), "x")
+	print("  = Rundenpunkte: ", _last_round_points)
+	print("  Gesamtpunktzahl: ", _current_score)
+	print("  (Aktueller Streak: ", _current_streak, ")")
 	
 	# UI aktualisieren
 	_update_ui()
