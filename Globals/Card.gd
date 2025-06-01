@@ -76,6 +76,32 @@ func _ready() -> void:
 func _on_pressed() -> void:
 	if GameManager and not GameManager.can_player_flip_card():
 		return
+	
+	# Check if this card is currently highlighted in the rhythm
+	var game_manager = get_node_or_null("/root/GameManager")
+	if game_manager and game_manager.card_rhythm_manager:
+		var rhythm_manager = game_manager.card_rhythm_manager
+		# Debug output
+		if rhythm_manager.debug_mode:
+			print("Card ", name, " clicked. Checking if it's highlighted...")
+			print("Card modulate: ", modulate)
+			print("Highlight color: ", rhythm_manager.highlight_color)
+		
+		# Check both the array and the visual state for reliability
+		var is_visually_highlighted = (modulate == rhythm_manager.highlight_color)
+		var is_in_highlighted_array = rhythm_manager.is_card_highlighted(self)
+		
+		if rhythm_manager.debug_mode:
+			print("Is in highlighted array: ", is_in_highlighted_array)
+			print("Is visually highlighted: ", is_visually_highlighted)
+		
+		if is_in_highlighted_array or is_visually_highlighted:
+			print("Great rhythm! Card flipped at the right moment!")
+			if rhythm_manager.has_signal("card_flipped_in_rhythm"):
+				rhythm_manager.emit_signal("card_flipped_in_rhythm", self)
+	else:
+		print("Warning: Could not find GameManager or CardRhythmManager")
+	
 	flip_up(true)
 	disabled = true # guard against double-clicks
 

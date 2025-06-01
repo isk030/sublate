@@ -1,5 +1,8 @@
 extends Node
 
+# Signals
+signal card_flipped_in_rhythm(card)
+
 # Configuration
 @export var bpm: float = 120.0
 @export var cards_to_highlight: int = 2  # Number of cards to highlight each beat (2-3)
@@ -7,7 +10,7 @@ extends Node
 @export var highlight_color: Color = Color(1.0, 0.2, 0.2, 0.7)  # Rot mit Transparenz
 
 # Debug
-@export var debug_mode: bool = true
+@export var debug_mode: bool = true  # Set to true to see debug messages
 
 # References
 @onready var game_manager: Node = get_node("/root/GameManager") if get_node_or_null("/root/GameManager") else null
@@ -26,7 +29,8 @@ func _ready() -> void:
 	if not game_manager:
 		printerr("CardRhythmManager: GameManager not found!")
 		return
-	print("CardRhythmManager: Found GameManager")
+	print("CardRhythmManager: Found GameManager at ", game_manager.get_path())
+	print("Debug mode: ", debug_mode)
 
 	# Wait a few frames to ensure everything is initialized
 	await get_tree().process_frame
@@ -62,7 +66,12 @@ func _ready() -> void:
 	add_child(beat_timer)
 	
 	# Start the beat
+	print("Starting beat timer...")
 	start_beat()
+	if beat_timer and beat_timer.is_stopped():
+		print("WARNING: Beat timer failed to start!")
+	else:
+		print("Beat timer started successfully")
 
 func start_beat() -> void:
 	if beat_timer.is_stopped():
@@ -103,12 +112,13 @@ func _is_card_valid(card: Node) -> bool:
 func _on_beat() -> void:
 	if debug_mode:
 		print("\n--- New Beat ---")
+		print("CardRhythmManager: Starting new beat, current highlighted cards: ", highlighted_cards.size())
 		
 	if not card_container or not is_instance_valid(card_container):
 		printerr("CardRhythmManager: Card container not found or invalid!")
 		return
 	
-	# Clear any existing highlights
+	# Clear any existing highlights first
 	_clear_highlights()
 	
 	# Get all valid cards (not matched and not already face up)
@@ -135,29 +145,59 @@ func _on_beat() -> void:
 	# Select random cards
 	valid_cards.shuffle()
 	var cards_to_highlight_this_beat = min(cards_to_highlight, valid_cards.size())
-	highlighted_cards = valid_cards.slice(0, cards_to_highlight_this_beat)
 	
-	# Apply red highlight to cards
-	for card in highlighted_cards:
+	# Clear the array before adding new cards
+	highlighted_cards.clear()
+	
+	# Add new cards to highlight
+	for i in range(cards_to_highlight_this_beat):
+		var card = valid_cards[i]
+		highlighted_cards.append(card)
+		
+		# Apply red highlight to card
 		if card is CanvasItem and is_instance_valid(card):
-			# Speichere die ursprüngliche Modulate-Farbe
+			# Save the original color if not already saved
 			if not card.has_meta("original_modulate"):
 				card.set_meta("original_modulate", card.modulate)
-			# Wende die rote Färbung an
+			# Apply highlight color
 			card.modulate = highlight_color
 			if debug_mode:
 				print("Highlighted card: ", card.name)
 	
 	# Set timer to clear highlights
 	highlight_timer.start(highlight_duration)
+	
+	# Debug output
+	if debug_mode:
+		var card_names = []
+		for card in highlighted_cards:
+			if is_instance_valid(card):
+				card_names.append(card.name)
+		print("Cards currently highlighted (", highlighted_cards.size(), "): ", card_names)
 
 func _on_highlight_timeout() -> void:
 	_clear_highlights()
 
+func is_card_highlighted(card: Node) -> bool:
+	var is_highlighted = card in highlighted_cards
+	if debug_mode:
+		print("Checking if card ", card.name, " is highlighted:", is_highlighted)
+		print("Current highlighted cards: ", highlighted_cards)
+	return is_highlighted
+
 func _clear_highlights() -> void:
-	for card in highlighted_cards:
-		if is_instance_valid(card) and card is CanvasItem:
-			# Stelle die ursprüngliche Farbe wieder her
+	if debug_mode:
+		print("Clearing highlights from ", highlighted_cards.size(), " cards")
+	
+	# Process all currently highlighted cards
+	for i in range(highlighted_cards.size() - 1, -1, -1):
+		var card = highlighted_cards[i]
+		if not is_instance_valid(card):
+			highlighted_cards.remove_at(i)
+			continue
+			
+		if card is CanvasItem:
+			# Restore original color if available
 			if card.has_meta("original_modulate"):
 				var original_color = card.get_meta("original_modulate")
 				if original_color is Color:

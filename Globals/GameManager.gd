@@ -1,5 +1,11 @@
 extends Node
 
+# Class References
+const CardRhythmManager = preload("res://Globals/CardRhythmManager.gd")
+
+# References
+var card_rhythm_manager: Node = null
+
 # Constants
 const DELAY_TIME: float = 1.0
 const CARD_PAIR_COUNT: int = 8
@@ -24,7 +30,33 @@ var _total_pairs_to_find: int = 0
 
 # Engine ready
 func _ready() -> void:
-	# Initialisiere den Zufallsgenerator mit einem festen Seed für reproduzierbare Ergebnisse
+	# Initialize random number generator
+	randomize()
+	
+	# Create and add CardRhythmManager if it doesn't exist
+	card_rhythm_manager = get_node_or_null("/root/CardRhythmManager")
+	if not card_rhythm_manager:
+		print("Creating new CardRhythmManager...")
+		card_rhythm_manager = CardRhythmManager.new()
+		card_rhythm_manager.name = "CardRhythmManager"
+		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
+		get_node("/root").add_child(card_rhythm_manager)
+		print("Created and added CardRhythmManager to scene tree")
+		
+		# Print the full path to help with debugging
+		print("CardRhythmManager path: ", card_rhythm_manager.get_path())
+	else:
+		print("Found existing CardRhythmManager")
+		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
+	
+	# Connect signals
+	if card_rhythm_manager.has_signal("card_flipped_in_rhythm"):
+		if not card_rhythm_manager.card_flipped_in_rhythm.is_connected(_on_card_flipped_in_rhythm):
+			card_rhythm_manager.card_flipped_in_rhythm.connect(_on_card_flipped_in_rhythm)
+	else:
+		printerr("CardRhythmManager is missing the 'card_flipped_in_rhythm' signal")
+	
+	# Initialize random number generator with a fixed seed for reproducible results
 	var random_seed = 42
 	seed(random_seed)
 	print("Zufallsgenerator initialisiert mit Seed: ", random_seed)
@@ -162,3 +194,6 @@ func _set_interaction_on_other_cards(p_disable: bool) -> void:
 
 func can_player_flip_card() -> bool:
 	return _state != GameState.States.PAUSE
+
+func _on_card_flipped_in_rhythm(card: Node) -> void:
+	print("Perfect rhythm! Card flipped at the right time: ", card.card_identifier if card else "unknown")
