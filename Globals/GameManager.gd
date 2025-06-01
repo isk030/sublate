@@ -144,19 +144,41 @@ func _on_card_flipped(card) -> void:
 func _evaluate_pair() -> void:
 	var is_match: bool = _first_flipped_card.card_identifier == _second_flipped_card.card_identifier
 	var timer := get_tree().create_timer(DELAY_TIME)
+	print("\n--- Evaluating pair ---")
+	print("First card (", _first_flipped_card.name, ") was in rhythm: ", _first_flipped_card.was_flipped_in_rhythm)
+	print("Second card (", _second_flipped_card.name, ") was in rhythm: ", _second_flipped_card.was_flipped_in_rhythm)
+	print("First card modulate: ", _first_flipped_card.modulate)
+	print("Second card modulate: ", _second_flipped_card.modulate)
+	if card_rhythm_manager:
+		print("Highlight color: ", card_rhythm_manager.highlight_color)
+	
 	timer.timeout.connect(func():
 		if not (is_instance_valid(_first_flipped_card) and is_instance_valid(_second_flipped_card)):
 			_finalize_turn()
 			return
 
+		# Check for heat bonus (both cards flipped in rhythm)
+		var heat_bonus: int = 0
+		if _first_flipped_card.was_flipped_in_rhythm and _second_flipped_card.was_flipped_in_rhythm:
+			heat_bonus = 100
+			print("HEAT BONUS! +100 points for perfect rhythm!")
+			EventManager.emit_event("heat_bonus", {"bonus": heat_bonus})
+		else:
+			print("No heat bonus - one or both cards not flipped in rhythm")
+		
 		if is_match:
+			print("Cards match! Applying points...")
 			_first_flipped_card.mark_matched()
 			_second_flipped_card.mark_matched()
 			_pairs_found += 1
+			
+			print("Emitting pair_found event with heat_bonus: ", heat_bonus)
 			EventManager.emit_event("pair_found", {
 				"pairs_found": _pairs_found,
-				"total_pairs": _total_pairs_to_find
+				"total_pairs": _total_pairs_to_find,
+				"heat_bonus": heat_bonus
 			})
+			
 			if _pairs_found == _total_pairs_to_find:
 				EventManager.emit_event("all_pairs_found")
 		else:

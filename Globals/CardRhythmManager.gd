@@ -65,6 +65,10 @@ func _ready() -> void:
 	beat_timer.timeout.connect(_on_beat)
 	add_child(beat_timer)
 	
+	# Connect the card_flipped_in_rhythm signal
+	if not card_flipped_in_rhythm.is_connected(_on_card_flipped_in_rhythm):
+		card_flipped_in_rhythm.connect(_on_card_flipped_in_rhythm)
+	
 	# Start the beat
 	print("Starting beat timer...")
 	start_beat()
@@ -108,6 +112,16 @@ func _is_card_valid(card: Node) -> bool:
 		print("Card ", card.name, ": matched=", is_matched, ", face_up=", is_face_up)
 	
 	return not is_matched and not is_face_up
+
+# Called when a card is flipped in rhythm
+func _on_card_flipped_in_rhythm(card: Node) -> void:
+	if card and card.has_method("set"):
+		print("Setting was_flipped_in_rhythm to TRUE for card: ", card.name)
+		card.was_flipped_in_rhythm = true
+		if debug_mode:
+			print("Card ", card.name, " was flipped in rhythm!")
+	else:
+		print("WARNING: Invalid card in _on_card_flipped_in_rhythm: ", card)
 
 func _on_beat() -> void:
 	if debug_mode:

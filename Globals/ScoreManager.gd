@@ -94,7 +94,10 @@ func _update_streak_display() -> void:
 	if is_instance_valid(_factor_two_label):
 		_factor_two_label.text = str(_last_round_points)
 
-func _on_pair_found(_data: Dictionary) -> void:
+func _on_pair_found(data: Dictionary) -> void:
+	print("\n--- ScoreManager: pair_found event received ---")
+	print("Data received: ", data)
+	
 	# Streak um 1 erhöhen, wenn das letzte Paar erfolgreich war
 	# Ansonsten beginnt ein neuer Streak bei 1
 	if _current_streak > 0:
@@ -105,22 +108,34 @@ func _on_pair_found(_data: Dictionary) -> void:
 	_streak_multiplier = min(_current_streak, MAX_STREAK_MULTIPLIER)
 	
 	# Anzahl der gefundenen Paare erhöhen
-	_pairs_found += 1
+	_pairs_found = data.get("pairs_found", _pairs_found + 1)
+	print("Current pairs found: ", _pairs_found)
 	
 	# Basispunkte für dieses Paar (100 für das erste Paar, dann +20 für jedes weitere)
 	var base_points = POINTS_PER_PAIR + ((_pairs_found - 1) * POINTS_PER_PREVIOUS_PAIR)
+	print("Base points: ", base_points)
 	
-	# Punkte für diese Runde berechnen (OHNE Multiplikator für die Anzeige)
-	_last_round_points = base_points  # OHNE Multiplikator für die Anzeige
+	# Heat Bonus (100 Punkte, wenn beide Karten im Takt gefunden wurden)
+	var heat_bonus = data.get("heat_bonus", 0)
+	print("Heat bonus: ", heat_bonus)
 	
-	# Punkte für diese Runde MIT Multiplikator berechnen und zum Gesamtscore addieren
-	var points_this_round = base_points * _streak_multiplier
-	_current_score += points_this_round
+	# Gesamtpunkte für diesen Zug (Basispunkte + Heat Bonus)
+	var points_this_round = base_points + heat_bonus
+	
+	# Punkte mit Streak-Multiplikator berechnen
+	var points_with_multiplier = points_this_round * _streak_multiplier
+	
+	# Punkte zum Gesamtscore addieren
+	_current_score += points_with_multiplier
+	_last_round_points = points_this_round  # OHNE Multiplikator für die Anzeige
 	
 	# Debug-Ausgabe
-	print("Paar ", _pairs_found, ": ", 
-		base_points, " x ", _streak_multiplier, " = ", points_this_round, 
-		" (Streak: ", _current_streak, "x, Gesamt: ", _current_score, ")")
+	print("Paar ", _pairs_found, ": ")
+	print("  Base: ", base_points)
+	if heat_bonus > 0:
+		print("  + Heat Bonus: ", heat_bonus)
+	print("  Total: ", points_this_round, " x ", _streak_multiplier, " = ", points_with_multiplier)
+	print("  (Streak: ", _current_streak, "x, Gesamt: ", _current_score, ")")
 	
 	# UI aktualisieren
 	if _total_score_label:
@@ -132,8 +147,9 @@ func _on_pair_found(_data: Dictionary) -> void:
 		"Streak: %dx, " % _current_streak,
 		"Multiplier: %dx, " % _streak_multiplier,
 		"Base: %d, " % base_points, 
+		("+%d Heat Bonus, " % heat_bonus if heat_bonus > 0 else ""),
 		"Total: %d" % _last_round_points, 
-		" (Score: %d, Pairs: %d)" % [_current_score, _pairs_found])
+		"(Score: %d, Pairs: %d)" % [_current_score, _pairs_found])
 
 func _on_mismatch_attempt() -> void:
 	# Streak zurücksetzen bei Fehlversuch

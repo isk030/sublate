@@ -12,6 +12,7 @@ signal state_changed(card, is_face_up: bool)
 
 var _is_face_up: bool = false
 var _is_matched: bool = false
+var was_flipped_in_rhythm: bool = false
 
 # Compatibility property for legacy code (read-only)
 var is_matched: bool:
@@ -44,6 +45,7 @@ func flip_down() -> void:
 	if not _is_face_up or _is_matched:
 		return
 	_is_face_up = false
+	was_flipped_in_rhythm = false  # Reset the flag when flipping down
 	texture_normal = back_texture
 	state_changed.emit(self, false)
 	disabled = false # Re-enable interaction
@@ -77,6 +79,9 @@ func _on_pressed() -> void:
 	if GameManager and not GameManager.can_player_flip_card():
 		return
 	
+	# First, reset the rhythm flag
+	was_flipped_in_rhythm = false
+	
 	# Check if this card is currently highlighted in the rhythm
 	var game_manager = get_node_or_null("/root/GameManager")
 	if game_manager and game_manager.card_rhythm_manager:
@@ -97,13 +102,23 @@ func _on_pressed() -> void:
 		
 		if is_in_highlighted_array or is_visually_highlighted:
 			print("Great rhythm! Card flipped at the right moment!")
+			# Set the rhythm flag
+			was_flipped_in_rhythm = true
+			print("Set was_flipped_in_rhythm to TRUE for card: ", name)
+			
+			# Also emit the signal for any other listeners
 			if rhythm_manager.has_signal("card_flipped_in_rhythm"):
 				rhythm_manager.emit_signal("card_flipped_in_rhythm", self)
 	else:
 		print("Warning: Could not find GameManager or CardRhythmManager")
 	
+	# Now flip the card up
 	flip_up(true)
 	disabled = true # guard against double-clicks
+	
+	# Debug: Print the current state after flip
+	if game_manager and game_manager.card_rhythm_manager and game_manager.card_rhythm_manager.debug_mode:
+		print("After flip - ", name, " was_flipped_in_rhythm: ", was_flipped_in_rhythm)
 
 func _reset_visual() -> void:
 	_is_face_up = false
