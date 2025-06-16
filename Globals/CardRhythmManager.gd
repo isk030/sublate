@@ -5,6 +5,12 @@ class_name CardRhythmManager
 static var instance: CardRhythmManager = null
 static var instance_count: int = 0
 
+# Globaler Zugriffspunkt (echter Singleton-Zugriff)
+static func get_instance() -> CardRhythmManager:
+	if instance == null:
+		printerr("CardRhythmManager: Versuch, auf nicht-initialisierten Singleton zuzugreifen!")
+	return instance
+
 # Signals
 signal card_flipped_in_rhythm(card)
 
@@ -52,6 +58,9 @@ func _enter_tree():
 		return
 
 func _ready() -> void:
+	# Zur Gruppe hinzufügen für bessere Auffindbarkeit
+	add_to_group("RhythmManager")
+	
 	if debug_mode:
 		print("CardRhythmManager _ready() - Instance ID: ", instance_id)
 	print("CardRhythmManager: Initializing...")

@@ -30,6 +30,9 @@ var _total_pairs_to_find: int = 0
 
 # Engine ready
 func _ready() -> void:
+	# Add self to GameManager group for better discovery
+	add_to_group("GameManager")
+	
 	# Initialize random number generator
 	randomize()
 	

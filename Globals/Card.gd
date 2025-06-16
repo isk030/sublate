@@ -82,10 +82,54 @@ func _on_pressed() -> void:
 	# First, reset the rhythm flag
 	was_flipped_in_rhythm = false
 	
-	# Check if this card is currently highlighted in the rhythm
-	var game_manager = get_node_or_null("/root/GameManager")
-	if game_manager and game_manager.card_rhythm_manager:
-		var rhythm_manager = game_manager.card_rhythm_manager
+	# INTENSIVE DIAGNOSE für CardRhythmManager-Zugriff
+	print("\n===========================================")
+	print("CARD DIAGNOSE: " + name + " sucht CardRhythmManager")
+	
+	# Variablen für die Diagnose
+	var rhythm_manager = null
+	var game_manager = null
+	
+	# 1. Direkt im Szenenbaum suchen
+	rhythm_manager = get_node_or_null("/root/CardRhythmManager")
+	print("1. Direkt im Szenenbaum gefunden: ", rhythm_manager != null)
+	
+	# 2. Über GameManager suchen
+	game_manager = get_node_or_null("/root/GameManager")
+	print("2. GameManager gefunden: ", game_manager != null)
+	
+	if game_manager:
+		print("   GameManager hat card_rhythm_manager: ", game_manager.has_method("_setup_rhythm_manager"))
+		print("   GameManager.card_rhythm_manager = ", game_manager.card_rhythm_manager)
+		
+		if game_manager and game_manager.card_rhythm_manager:
+			print("   GameManager.card_rhythm_manager vorhanden!")
+			rhythm_manager = game_manager.card_rhythm_manager
+			
+			# Wenn wir den GameManager haben, aber keinen CardRhythmManager, initialisieren
+			if not rhythm_manager and game_manager.has_method("_setup_rhythm_manager"):
+				print("   Initialisiere CardRhythmManager...")
+				game_manager._setup_rhythm_manager()
+				rhythm_manager = game_manager.card_rhythm_manager
+	
+	# 3. Über die Gruppe suchen
+	if not rhythm_manager and get_tree():
+		var rhythm_managers = get_tree().get_nodes_in_group("RhythmManager")
+		print("3. RhythmManager-Gruppe Anzahl: ", rhythm_managers.size())
+		if rhythm_managers.size() > 0:
+			rhythm_manager = rhythm_managers[0]
+		
+	# FINALE DIAGNOSE
+	print("CardRhythmManager gefunden: ", rhythm_manager != null)
+	if rhythm_manager:
+		print("CardRhythmManager Methoden:")
+		print("  - has_signal('card_flipped_in_rhythm'): ", rhythm_manager.has_signal("card_flipped_in_rhythm"))
+		print("  - has_method('is_card_highlighted'): ", rhythm_manager.has_method("is_card_highlighted"))
+		print("  - debug_mode: ", rhythm_manager.debug_mode if "debug_mode" in rhythm_manager else "nicht gefunden")
+		print("  - highlight_color: ", rhythm_manager.highlight_color if "highlight_color" in rhythm_manager else "nicht gefunden")
+	print("=========================================\n")
+	
+	if rhythm_manager:
 		# Debug output
 		if rhythm_manager.debug_mode:
 			print("Card ", name, " clicked. Checking if it's highlighted...")
