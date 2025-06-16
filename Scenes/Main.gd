@@ -50,51 +50,72 @@ func _initialize_score_manager() -> void:
 		push_error("ScoreManager (Autoload) nicht gefunden!")
 		return
 	
-	# Direkter Aufruf, da die Methode void zurückgibt
+	# Set up the score labels
 	ScoreManager.set_score_labels(
 		_ui_total_score_label, 
 		_ui_factor_one, 
 		_ui_factor_two
 	)
 	
-	# Fortschrittsleiste verbinden
-	var score_bar = $ScoreBar  # Direktes Kind der Hauptszene
-	print("Suche nach ScoreBar als direktes Kind der Hauptszene")
-	print("ScoreBar existiert: ", score_bar != null)
-	if score_bar:
-		print("ScoreBar gefunden: ", score_bar)
-		print("ScoreBar Kinder: ", score_bar.get_children())
-		
-		# Alle Kinder durchsuchen, um ProgressBar zu finden
+	# Connect the progress bar - Look for ScoreBar as child of BackgroundArea
+	var score_bar = _background_area.get_node_or_null("ScoreBar")
+	print("Looking for ScoreBar as child of BackgroundArea")
+	print("ScoreBar exists: ", score_bar != null)
+	
+	if not score_bar:
+		push_error("Main: Could not find ScoreBar node")
+		print("Children of BackgroundArea:")
+		for child in _background_area.get_children():
+			print(" - ", child.name, " (Type: ", child.get_class(), ")")
+		return
+	
+	print("ScoreBar found: ", score_bar)
+	print("ScoreBar children: ", score_bar.get_children())
+	
+	# Find the progress bar
+	var progress_bar: ProgressBar = null
+	
+	# First try to find by node path
+	progress_bar = score_bar.get_node_or_null("HBoxContainer/ScoreProgressBar")
+	
+	# If not found, search for any ProgressBar in the scene
+	if not progress_bar:
 		for child in score_bar.get_children():
-			print("Kind: ", child.name, ", Typ: ", child.get_class())
-		
-		var progress_bar = score_bar.get_node_or_null("%ScoreProgressBar")
-		print("ProgressBar gefunden?: ", progress_bar != null)
-		
-		if progress_bar:
-			ScoreManager.set_progress_bar(progress_bar)
-			print("Main: Fortschrittsleiste mit ScoreManager verbunden")
-			# Direkte Aktualisierung, um sicherzustellen, dass es funktioniert
-			progress_bar.value = ScoreManager._current_score
-			var score_label = progress_bar.get_node_or_null("%ScoreLabel")
-			if score_label:
-				score_label.text = str(ScoreManager._current_score)
-				print("Score Label gefunden und aktualisiert")
-		else:
-			push_error("Main: Konnte ScoreProgressBar nicht finden")
-			# Versuche mit anderem Weg die ProgressBar zu finden
-			for child in score_bar.get_children():
-				if child is ProgressBar:
-					print("Alternativ: ProgressBar gefunden via Typ-Test")
-					ScoreManager.set_progress_bar(child)
-					child.value = ScoreManager._current_score
+			if child is ProgressBar:
+				progress_bar = child
+				break
+			elif child.get_child_count() > 0:
+				progress_bar = child.get_node_or_null("ScoreProgressBar")
+				if progress_bar:
+					break
+	
+	if not progress_bar:
+		push_error("Main: Could not find any ProgressBar in the scene")
+		return
+	
+	print("Found ProgressBar: ", progress_bar)
+	
+	# Set up the progress bar in ScoreManager
+	ScoreManager.set_progress_bar(progress_bar)
+	print("Main: Progress bar connected to ScoreManager")
+	
+	# Force an initial update
+	progress_bar.value = ScoreManager._current_score
+	
+	# Find and update the score label
+	var score_label = progress_bar.get_node_or_null("ScoreLabel")
+	if not score_label:
+		# Try to find any label in the progress bar
+		for child in progress_bar.get_children():
+			if child is Label:
+				score_label = child
+				break
+	
+	if score_label:
+		score_label.text = str(ScoreManager._current_score)
+		print("Score label updated to: ", score_label.text)
 	else:
-		push_error("Main: Konnte ScoreBar nicht finden")
-		# Drucke alle Kinder der Hauptszene aus
-		print("Kinder der Hauptszene: ")
-		for child in get_children():
-			print(" - ", child.name)
+		print("Warning: Could not find score label in progress bar")
 
 func _initialize_game_manager() -> void:
 	if not GameManager:

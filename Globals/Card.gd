@@ -61,7 +61,7 @@ func mark_matched() -> void:
 	texture_normal = matched_texture
 	disabled = true
 	matched.emit(self)
-	show_points(50, Color.DARK_GREEN, true)
+	show_points(50)
 
 func is_face_up() -> bool:
 	return _is_face_up
@@ -80,26 +80,26 @@ func _ready() -> void:
 # ------------------------------------------------------------------ #
 
 # Spawn a floating text at the card's position indicating points earned
-func _center_floating_label(flbl: Control) -> void:
-	if not is_instance_valid(flbl):
-		return
-	flbl.position = (size - flbl.size) / 2
-
-#
-func show_points(points: int, p_color: Color = Color.WHITE, p_bold: bool = false) -> void:
+func show_points(points: int) -> void:
 	var lbl := FloatingLabel.new()
 	lbl.text = "+" + str(points)
-	lbl.start_color = p_color
-	lbl.bold = p_bold
+	
+	# Apply styling based on points value
+	if points == 50:  # New card pair found
+		lbl.add_theme_font_size_override("font_size", 36)  # Larger font
+		lbl.add_theme_color_override("font_color", Color("#006400"))  # Dark green
+		lbl.add_theme_constant_override("outline_size", 2)
+		lbl.add_theme_color_override("font_outline_color", Color.BLACK)
+		lbl.add_theme_constant_override("font_weight", 700)  # Bold
+	elif points == 10:  # Passive buff
+		lbl.add_theme_font_size_override("font_size", 28)  # Slightly larger than default
+		lbl.add_theme_color_override("font_color", Color.GOLD)
+		lbl.add_theme_constant_override("outline_size", 2)
+		lbl.add_theme_color_override("font_outline_color", Color.BLACK)
+	
 	add_child(lbl)
-	# Center within card
-	# reset anchors to top-left so we can place via position
-	lbl.anchor_left = 0
-	lbl.anchor_top = 0
-	lbl.anchor_right = 0
-	lbl.anchor_bottom = 0
-	# defer centering until label has size
-	call_deferred("_center_floating_label", lbl)
+	# Place in the center of the card (local coordinates)
+	lbl.position = size / 2
 	lbl.start()
 
 

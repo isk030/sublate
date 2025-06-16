@@ -47,31 +47,42 @@ func set_score_labels(total_label: Label, factor1_label: Label, factor2_label: L
 	print("ScoreManager: UI-Labels gesetzt")
 
 func set_progress_bar(progress_bar: ProgressBar) -> void:
+	print("\n==== set_progress_bar CALLED ====")
+	print("Progress bar reference received:", progress_bar)
+	
+	if not progress_bar:
+		push_error("ScoreManager: No progress bar provided to set_progress_bar")
+		return
+		
 	_score_progress_bar = progress_bar
-	if _score_progress_bar:
-		print("ScoreManager: Fortschrittsleiste verbunden - initialisiere mit _current_score: ", _current_score)
-		# Maximalen Wert setzen
-		_score_progress_bar.max_value = _max_score_target
-		
-		# Forciere die Wertzuweisung und Update der UI
-		_score_progress_bar.value = _current_score
-		_score_progress_bar.value = _current_score # Doppelte Zuweisung um UI-Update zu erzwingen
-		
-		# Score Label in der Fortschrittsleiste finden und aktualisieren
-		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
-		if score_label:
-			score_label.text = str(_current_score)
-			print("ScoreManager: Score Label in Fortschrittsleiste auf ", _current_score, " gesetzt")
-		else:
-			for child in _score_progress_bar.get_children():
-				print("Kind der Fortschrittsleiste: ", child.get_name(), " - Klasse: ", child.get_class())
-				if child is Label:
-					child.text = str(_current_score)
-					print("Fallback: Label in Fortschrittsleiste gefunden und aktualisiert")
-		
-		print("ScoreManager: Progress bar connected successfully")
+	print("ScoreManager: Progress bar connected - Initializing with score:", _current_score, "/", _max_score_target)
+	
+	# Set max value
+	_score_progress_bar.max_value = _max_score_target
+	print("Set max value to:", _score_progress_bar.max_value)
+	
+	# Force value update
+	_score_progress_bar.value = _current_score
+	print("Set initial value to:", _score_progress_bar.value)
+	
+	# Try to find and update the score label
+	# First try to find the ScoreLabel directly as a child
+	var score_label = _score_progress_bar.get_node_or_null("ScoreLabel")
+	if not score_label:
+		print("ScoreLabel not found as direct child, searching for any Label...")
+		for child in _score_progress_bar.get_children():
+			if child is Label:
+				score_label = child
+				print("Found label:", child.name, " of type:", child.get_class())
+				break
+	
+	if score_label:
+		score_label.text = str(_current_score)
+		print("Updated score label to:", score_label.text)
 	else:
-		push_error("ScoreManager: Invalid progress bar reference")
+		print("Warning: Could not find any label in progress bar to update")
+	
+	print("==== set_progress_bar DONE ====")
 
 func _init() -> void:
 	# Modifier initialisieren
@@ -155,6 +166,10 @@ func add_score(score: int) -> void:
 	print("Adding score: ", score, " to current score: ", _current_score)
 	_current_score += score
 	print("New total score: ", _current_score)
+	print("Progress bar exists: ", _score_progress_bar != null)
+	if _score_progress_bar:
+		print("Progress bar max value: ", _score_progress_bar.max_value)
+		print("Progress bar current value: ", _score_progress_bar.value)
 	_update_ui()
 	print("==== add_score DONE ====")
 
@@ -178,37 +193,55 @@ func reset_game() -> void:
 func _update_ui() -> void:
 	print("\n==== _update_ui CALLED ====")
 	print("Current score: ", _current_score)
-	print("Progress bar exists: ", _score_progress_bar != null)
+	print("Progress bar reference: ", _score_progress_bar)
+	if _score_progress_bar:
+		print("Before update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 	
+	# Update total score label
 	if _total_score_label:
 		_total_score_label.text = str(_current_score)
 		print("Total score label updated to: ", _current_score)
+	
+	# Update streak factor
 	if _factor_one_label:
 		_factor_one_label.text = str(max(1, _current_streak))
+	
+	# Update points display
 	if _factor_two_label:
 		# Calculate base points (100 for first pair, +20 for each previous pair)
 		var base_points = 100 + (max(0, _pairs_found - 1) * 20)
 		# Add heat bonus if both cards were flipped in rhythm
-		var heat_bonus = 100 if _current_streak > 0 and _last_round_points > (base_points * max(1, _current_streak)) else 0
-		# Total flat points (base + heat bonus)
+		var heat_bonus = 100 if _pairs_found > 0 and _pairs_found % 2 == 0 else 0
 		var total_flat_points = base_points + heat_bonus
 		_factor_two_label.text = str(total_flat_points)
-		
-	# Aktualisiere die Fortschrittsanzeige
+	
+	# Update progress bar and its label
 	if _score_progress_bar:
 		print("Updating progress bar from ", _score_progress_bar.value, " to ", _current_score)
-		_score_progress_bar.value = _current_score
 		
-		# Passe das Label in der Fortschrittsanzeige an
-		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		# Update progress bar value
+		print("Setting progress bar value to: ", _current_score)
+		_score_progress_bar.value = _current_score
+		print("After update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
+		
+		# Find and update the score label inside the progress bar
+		var score_label = _score_progress_bar.get_node_or_null("ScoreLabel")  # Direct child of ScoreProgressBar
+		
+		# Fallback: Try to find any Label in the progress bar
+		if not score_label:
+			for child in _score_progress_bar.get_children():
+				if child is Label:
+					score_label = child
+					break
+		
 		if score_label:
 			score_label.text = str(_current_score)
 			print("ScoreLabel in progress bar updated to: ", _current_score)
 		else:
-			push_error("ScoreLabel not found in progress bar")
+			print("Warning: Could not find ScoreLabel in progress bar")
 	else:
-		push_error("NO PROGRESS BAR FOUND to update!")
-		
+		print("Warning: No progress bar found to update!")
+	
 	print("==== _update_ui DONE ====")
 
 func _on_pair_found(data: Dictionary) -> void:
