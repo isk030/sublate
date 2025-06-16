@@ -1,12 +1,10 @@
-[gd_scene load_steps=17 format=3 uid="uid://5pj1h7kwtmcp"]
+[gd_scene load_steps=15 format=3 uid="uid://5pj1h7kwtmcp"]
 
 [ext_resource type="Script" uid="uid://1pojjuwqhnei" path="res://Scenes/Main.gd" id="1_6iyac"]
 [ext_resource type="PackedScene" uid="uid://b34i7gd50ri4c" path="res://Scenes/background_area.tscn" id="1_jjgbg"]
 [ext_resource type="PackedScene" uid="uid://m4hi1i11i5br" path="res://Scenes/card_area.tscn" id="2_bo1nx"]
 [ext_resource type="PackedScene" uid="uid://c3rc37ormn64q" path="res://Scenes/player_panel.tscn" id="3_8gbba"]
-[ext_resource type="Texture2D" uid="uid://s5vbytx20e01" path="res://assets/ui/yellow_button00.png" id="3_344ge"]
 [ext_resource type="PackedScene" uid="uid://c7tne7uowmnoq" path="res://Scenes/score_bar.tscn" id="3_ynf5e"]
-[ext_resource type="Texture2D" uid="uid://cteuwalfu41jb" path="res://assets/ui/grey_button00.png" id="4_fdnlq"]
 [ext_resource type="PackedScene" uid="uid://sjc56widjri5" path="res://Scenes/score_panel.tscn" id="4_jjvhh"]
 [ext_resource type="PackedScene" uid="uid://hojxrk2dmg3h" path="res://Scenes/buff_panel.tscn" id="5_21xkr"]
 [ext_resource type="Texture2D" uid="uid://bg4gr0d3brjxf" path="res://assets/images/ChatGPT Image 29. Apr. 2025, 12_12_47.png" id="8_344ge"]
@@ -40,30 +38,15 @@ texture = ExtResource("8_344ge")
 [node name="BackgroundArea" parent="." instance=ExtResource("1_jjgbg")]
 layout_mode = 1
 
+[node name="ScoreBar" parent="BackgroundArea" instance=ExtResource("3_ynf5e")]
+layout_mode = 1
+offset_bottom = -1032.0
+
 [node name="VBoxContainer" type="VBoxContainer" parent="BackgroundArea"]
 layout_mode = 0
 offset_right = 1920.0
 offset_bottom = 1080.0
 theme_override_constants/separation = 80
-
-[node name="ScoreBar" parent="BackgroundArea/VBoxContainer" instance=ExtResource("3_ynf5e")]
-custom_minimum_size = Vector2(0, 100)
-layout_mode = 2
-
-[node name="TextureRect2" type="TextureRect" parent="BackgroundArea/VBoxContainer/ScoreBar"]
-custom_minimum_size = Vector2(1920, 50)
-layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
-texture = ExtResource("4_fdnlq")
-expand_mode = 1
-
-[node name="TextureRect" type="TextureRect" parent="BackgroundArea/VBoxContainer/ScoreBar"]
-custom_minimum_size = Vector2(1500, 0)
-layout_mode = 0
-offset_right = 1500.0
-offset_bottom = 49.0
-texture = ExtResource("3_344ge")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="BackgroundArea/VBoxContainer"]
 layout_mode = 2

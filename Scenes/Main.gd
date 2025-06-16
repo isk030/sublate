@@ -56,6 +56,45 @@ func _initialize_score_manager() -> void:
 		_ui_factor_one, 
 		_ui_factor_two
 	)
+	
+	# Fortschrittsleiste verbinden (unter BackgroundArea)
+	var score_bar = $BackgroundArea/ScoreBar
+	print("Suche nach ScoreBar als direktes Kind der Hauptszene")
+	print("ScoreBar existiert: ", score_bar != null)
+	if score_bar:
+		print("ScoreBar gefunden: ", score_bar)
+		print("ScoreBar Kinder: ", score_bar.get_children())
+		
+		# Alle Kinder durchsuchen, um ProgressBar zu finden
+		for child in score_bar.get_children():
+			print("Kind: ", child.name, ", Typ: ", child.get_class())
+		
+		var progress_bar = score_bar.get_node_or_null("%ScoreProgressBar")
+		print("ProgressBar gefunden?: ", progress_bar != null)
+		
+		if progress_bar:
+			ScoreManager.set_progress_bar(progress_bar)
+			print("Main: Fortschrittsleiste mit ScoreManager verbunden")
+			# Direkte Aktualisierung, um sicherzustellen, dass es funktioniert
+			progress_bar.value = ScoreManager._current_score
+			var score_label = progress_bar.get_node_or_null("%ScoreLabel")
+			if score_label:
+				score_label.text = str(ScoreManager._current_score)
+				print("Score Label gefunden und aktualisiert")
+		else:
+			push_error("Main: Konnte ScoreProgressBar nicht finden")
+			# Versuche mit anderem Weg die ProgressBar zu finden
+			for child in score_bar.get_children():
+				if child is ProgressBar:
+					print("Alternativ: ProgressBar gefunden via Typ-Test")
+					ScoreManager.set_progress_bar(child)
+					child.value = ScoreManager._current_score
+	else:
+		push_error("Main: Konnte ScoreBar nicht finden")
+		# Drucke alle Kinder der Hauptszene aus
+		print("Kinder der Hauptszene: ")
+		for child in get_children():
+			print(" - ", child.name)
 
 func _initialize_game_manager() -> void:
 	if not GameManager:
