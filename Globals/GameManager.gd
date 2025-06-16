@@ -182,7 +182,14 @@ func _evaluate_pair() -> void:
 			_first_flipped_card.mark_matched()
 			_second_flipped_card.mark_matched()
 			_pairs_found += 1
-			
+			# Show passive buff +10 on previously matched cards
+			if card_area:
+				var grid := card_area.get_node_or_null("GridContainer")
+				if grid:
+					for child in grid.get_children():
+						if child.get_script() == _card_script and child != _first_flipped_card and child != _second_flipped_card and child.is_matched:
+							if child.has_method("show_points"):
+								child.show_points(10)
 			print("Emitting pair_found event with heat_bonus: ", heat_bonus)
 			EventManager.emit_event("pair_found", {
 				"pairs_found": _pairs_found,

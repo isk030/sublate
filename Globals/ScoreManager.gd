@@ -104,23 +104,17 @@ func setup_ui_references(panel: Control) -> void:
 	_factor_two_label = panel.get_node_or_null("VBoxContainer/FactorsContainer/LastRoundFactor")
 	_game_won_message_label = panel.get_node_or_null("VBoxContainer/GameWonContainer/GameWonLabel")
 	
-	# Fortschrittsanzeige finden (in der BackgroundArea/ScoreBar)
-	var background_area = panel.get_parent().get_node_or_null("../BackgroundArea")
-	if background_area:
-		var score_bar = background_area.get_node_or_null("ScoreBar")
-		if score_bar:
-			_score_progress_bar = score_bar.get_node_or_null("%ScoreProgressBar")
-			if _score_progress_bar:
-				# Standardwerte setzen
-				_score_progress_bar.max_value = _max_score_target
-				_score_progress_bar.value = _current_score
-				print("ScoreManager: Progress bar connected successfully with value: ", _current_score)
-			else:
-				push_error("ScoreManager: Failed to find %ScoreProgressBar in ScoreBar")
+	# Fortschrittsanzeige finden (in der ScoreBar)
+	var score_bar = panel.get_parent().get_node_or_null("../ScoreBar")
+	if score_bar:
+		_score_progress_bar = score_bar.get_node_or_null("%ScoreProgressBar")
+		if _score_progress_bar:
+			# Standardwerte setzen
+			_score_progress_bar.max_value = _max_score_target
+			_score_progress_bar.value = 0
+			print("ScoreManager: Progress bar connected successfully")
 		else:
-			push_error("ScoreManager: Failed to find ScoreBar in BackgroundArea")
-	else:
-		push_error("ScoreManager: Failed to find BackgroundArea")
+			push_error("ScoreManager: Failed to find progress bar")
 	
 	if _total_score_label and _factor_one_label and _factor_two_label:
 		print("ScoreManager: UI labels connected successfully")
@@ -130,13 +124,20 @@ func setup_ui_references(panel: Control) -> void:
 func reset_score_panel() -> void:
 	# Setze nur die UI-Elemente zurück, nicht den Score
 	if _total_score_label:
-		_total_score_label.text = "0"  # Gesamtpunktzahl auf 0 setzen
+		_total_score_label.text = str(_current_score)
 	if _factor_one_label:
-		_factor_one_label.text = "0"  # Streak auf 0 setzen
+		_factor_one_label.text = "1"
 	if _factor_two_label:
-		_factor_two_label.text = "0"  # Basis-Punkte auf 0 setzen
+		_factor_two_label.text = "100"
 	if _game_won_message_label:
 		_game_won_message_label.visible = false
+	# Fortschrittsanzeige zurücksetzen
+	if _score_progress_bar:
+		_score_progress_bar.value = _current_score
+		# Label aktualisieren
+		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		if score_label:
+			score_label.text = str(_current_score)
 	
 	print("ScoreManager: Score-Panel UI zurückgesetzt")
 

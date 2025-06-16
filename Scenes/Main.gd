@@ -57,8 +57,8 @@ func _initialize_score_manager() -> void:
 		_ui_factor_two
 	)
 	
-	# Fortschrittsleiste verbinden (unter BackgroundArea)
-	var score_bar = $BackgroundArea/ScoreBar
+	# Fortschrittsleiste verbinden
+	var score_bar = $ScoreBar  # Direktes Kind der Hauptszene
 	print("Suche nach ScoreBar als direktes Kind der Hauptszene")
 	print("ScoreBar existiert: ", score_bar != null)
 	if score_bar:

@@ -10,6 +10,9 @@ signal state_changed(card, is_face_up: bool)
 @export var back_texture: Texture2D = null
 @export var matched_texture: Texture2D = preload("res://Globals/TextureLoader.gd").get_matched_texture()
 
+# Preload floating label helper
+const FloatingLabel = preload("res://Globals/FloatingLabel.gd")
+
 var _is_face_up: bool = false
 var _is_matched: bool = false
 var was_flipped_in_rhythm: bool = false
@@ -58,6 +61,7 @@ func mark_matched() -> void:
 	texture_normal = matched_texture
 	disabled = true
 	matched.emit(self)
+	show_points(50)
 
 func is_face_up() -> bool:
 	return _is_face_up
@@ -74,6 +78,17 @@ func _ready() -> void:
 # ------------------------------------------------------------------ #
 # Internal helpers                                                   #
 # ------------------------------------------------------------------ #
+
+# Spawn a floating text at the card's position indicating points earned
+func show_points(points: int) -> void:
+	var lbl := FloatingLabel.new()
+	lbl.text = "+" + str(points)
+	add_child(lbl)
+	# Place in the center of the card (local coordinates)
+	lbl.position = size / 2
+	lbl.start()
+
+
 
 func _on_pressed() -> void:
 	if GameManager and not GameManager.can_player_flip_card():
