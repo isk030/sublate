@@ -1,4 +1,9 @@
 extends Node
+class_name CardRhythmManager
+
+# Singleton instance tracking
+static var instance: CardRhythmManager = null
+static var instance_count: int = 0
 
 # Signals
 signal card_flipped_in_rhythm(card)
@@ -8,7 +13,7 @@ signal card_flipped_in_rhythm(card)
 # Immer genau 2 Karten hervorheben
 const CARDS_TO_HIGHLIGHT: int = 2
 @export var highlight_duration: float = 0.5  # Dauer der Hervorhebung
-@export var highlight_color: Color = Color(1.0, 0.2, 0.2, 0.7)  # Farbe der Hervorhebung
+@export var highlight_color: Color = Color(1.5, 1.5, 1.5)  # Farbe der Hervorhebung
 @export var random_seed: int = 42  # Fester Seed für Reproduzierbarkeit
 
 # Debug
@@ -23,8 +28,32 @@ var beat_timer: Timer = null
 # Internal state
 var cards: Array = []
 var highlighted_cards: Array = []
+var instance_id: int = 0
+var _is_processing_beat: bool = false
+var _beat_in_progress: bool = false
+var _last_beat_time: float = 0.0
+
+func _init():
+	# Track instance creation
+	instance_count += 1
+	instance_id = instance_count
+	if instance == null:
+		instance = self
+	if debug_mode:
+		print("CardRhythmManager _init() - Instance ID: ", instance_id, ", Total instances: ", instance_count)
+
+func _enter_tree():
+	if debug_mode:
+		print("CardRhythmManager _enter_tree() - Instance ID: ", instance_id)
+	if instance != self:
+		if debug_mode:
+			printerr("Multiple CardRhythmManager instances detected! Instance ID: ", instance_id)
+		queue_free()
+		return
 
 func _ready() -> void:
+	if debug_mode:
+		print("CardRhythmManager _ready() - Instance ID: ", instance_id)
 	print("CardRhythmManager: Initializing...")
 	print("Debug mode: ", debug_mode)
 	
@@ -158,23 +187,36 @@ func _on_card_flipped_in_rhythm(card: Node) -> void:
 	else:
 		print("WARNING: Invalid card in _on_card_flipped_in_rhythm: ", card)
 
-var _is_processing_beat: bool = false
-
 func _on_beat() -> void:
-	if _is_processing_beat:
+	var current_time = Time.get_ticks_msec()
+	var time_since_last_beat = (current_time - _last_beat_time) / 1000.0
+	
+	if _is_processing_beat or _beat_in_progress:
 		if debug_mode:
-			print("Beat processing already in progress, skipping this beat")
+			print("Beat processing already in progress (is_processing: ", _is_processing_beat, 
+				", beat_in_progress: ", _beat_in_progress, "), skipping this beat")
 		return
 	
 	if not is_inside_tree():
-		call_deferred("_on_beat")  # Im nächsten Frame erneut versuchen
+		if debug_mode:
+			print("Not in tree yet, deferring beat processing")
+		call_deferred("_on_beat")  # Try again next frame
 		return
-		
+	
+	# Safety check - don't process beats too close together
+	if time_since_last_beat < 0.1:  # 100ms minimum between beats
+		if debug_mode:
+			print("Beat too soon after last one (", time_since_last_beat, "s), skipping")
+		return
+	
 	_is_processing_beat = true
+	_beat_in_progress = true
+	_last_beat_time = current_time
 	
 	if debug_mode:
-		print("\n--- New Beat (Time: ", Time.get_ticks_msec() / 1000.0, ") ---")
-		print("CardRhythmManager: Starting new beat, current highlighted cards: ", highlighted_cards.size())
+		print("\n--- New Beat (Time: ", current_time / 1000.0, ")")
+		print("Instance ID: ", instance_id, ", Time since last beat: ", time_since_last_beat, "s")
+		print("Current highlighted cards: ", highlighted_cards.size())
 	
 	# Bestehende Hervorhebungen entfernen
 	_clear_highlights()
@@ -203,11 +245,12 @@ func _on_beat() -> void:
 	if debug_mode:
 		print("Found ", valid_cards.size(), " valid cards out of ", total_children)
 	
-	# Wenn nicht genügend Karten vorhanden sind, nichts tun
-	if valid_cards.size() < CARDS_TO_HIGHLIGHT:
+	# Wenn nicht genügend Karten vorhanden sind oder nur noch 2 oder weniger Karten übrig sind, nichts tun
+	if valid_cards.size() <= CARDS_TO_HIGHLIGHT:
 		if debug_mode:
-			print("Not enough valid cards to highlight (need ", CARDS_TO_HIGHLIGHT, ")")
+			print("Not enough valid cards to highlight (need more than ", CARDS_TO_HIGHLIGHT, ")")
 		_is_processing_beat = false
+		_beat_in_progress = false
 		return
 	
 	# Zufallsgenerator mit aktuellem Seed initialisieren
@@ -248,25 +291,40 @@ func _on_beat() -> void:
 				print("Highlighted card: ", card.name)
 	
 	# Timer zum Entfernen der Hervorhebungen starten
-	if highlight_timer:
-		# Stoppe den Timer und entferne alle ausstehenden Timeout-Signale
-		highlight_timer.stop()
-		# Warte bis zum nächsten Frame, um sicherzustellen, dass alle ausstehenden Timeouts verarbeitet wurden
-		await get_tree().process_frame
-		# Starte den Timer neu
-		highlight_timer.start(highlight_duration)
-		if debug_mode:
-			print("Started highlight timer for ", highlight_duration, " seconds")
-	else:
+	if not highlight_timer:
 		printerr("Highlight timer is not initialized!")
+		_is_processing_beat = false
+		_beat_in_progress = false
+		return
 	
-	# Debug-Ausgabe nach dem Hervorheben
-	if debug_mode and highlighted_cards.size() > 0:
-		var card_names = []
-		for card in highlighted_cards:
-			if is_instance_valid(card):
-				card_names.append(card.name)
-		print("Successfully highlighted ", card_names.size(), " cards: ", ", ".join(card_names))
+	# Stoppe den Timer und entferne alle ausstehenden Timeout-Signale
+	highlight_timer.stop()
+	
+	# Warte bis zum nächsten Frame, um sicherzustellen, dass alle ausstehenden Timeouts verarbeitet wurden
+	await get_tree().process_frame
+	
+	# Starte den Timer neu
+	highlight_timer.start(highlight_duration)
+	
+	if debug_mode:
+		print("Started highlight timer for ", highlight_duration, " seconds")
+		
+		# Debug-Ausgabe nach dem Hervorheben
+		if highlighted_cards.size() > 0:
+			var card_names = []
+			for card in highlighted_cards:
+				if is_instance_valid(card):
+					card_names.append(card.name)
+			print("Successfully highlighted ", card_names.size(), " cards: ", ", ".join(card_names))
+		else:
+			print("No cards were highlighted this beat")
+
+	# Reset processing flags
+	_is_processing_beat = false
+	_beat_in_progress = false
+	
+	if debug_mode:
+		print("Beat processing completed at ", Time.get_ticks_msec() / 1000.0)
 	
 	_is_processing_beat = false
 
@@ -285,13 +343,16 @@ func is_card_highlighted(card: Node) -> bool:
 	return is_highlighted
 
 func _clear_highlights() -> void:
+	var _start_time = Time.get_ticks_msec() if debug_mode else 0
+	var cards_cleared = 0
+	
 	if debug_mode:
 		print("Clearing highlights from ", highlighted_cards.size(), " cards")
 	
-	# Erstelle eine Kopie der zu löschenden Karten, um sie nach dem Zurücksetzen zu überprüfen
+	# Create a copy of cards to clear for debugging
 	var cards_to_clear = highlighted_cards.duplicate()
 	
-	# Process all currently highlighted cards
+	# Process all currently highlighted cards in reverse order
 	for i in range(highlighted_cards.size() - 1, -1, -1):
 		var card = highlighted_cards[i]
 		if not is_instance_valid(card):
@@ -304,20 +365,24 @@ func _clear_highlights() -> void:
 				var original_color = card.get_meta("original_modulate")
 				if original_color is Color:
 					card.modulate = original_color
+					cards_cleared += 1
 					if debug_mode:
 						print("Removed highlight from card: ", card.name)
 		else:
 			if debug_mode:
 				print("Card is not a CanvasItem: ", card.name)
-	
+
 	# Clear the array after processing all cards
 	highlighted_cards.clear()
 	
-	# Debug: Überprüfe, ob alle Karten zurückgesetzt wurden
+	# Debug: Check if all cards were properly cleared
 	if debug_mode:
 		for card in cards_to_clear:
 			if is_instance_valid(card) and card is CanvasItem and card.modulate == highlight_color:
 				printerr("Card still has highlight color after clear: ", card.name)
+		
+		var clear_time = (Time.get_ticks_msec() - _start_time) / 1000.0
+		print("Cleared ", cards_cleared, " cards in ", clear_time, "s")
 
 func set_bpm(new_bpm: float) -> void:
 	if new_bpm > 0:

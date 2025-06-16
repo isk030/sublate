@@ -256,4 +256,3 @@ layout_mode = 1
 [node name="Node" type="Node" parent="."]
 script = ExtResource("16_k12tt")
 highlight_duration = 2.0
-debug_mode = false

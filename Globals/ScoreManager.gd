@@ -144,20 +144,22 @@ func _on_pair_found(data: Dictionary) -> void:
 
 func _on_mismatch_attempt() -> void:
 	# Streak zurücksetzen bei Fehlversuch
-	if _current_streak > 0:
-		print("ScoreManager: Streak broken! War bei ", _current_streak, "x")
-		_current_streak = 0
-		_streak_multiplier = 1
-		_last_round_points = 0  # Keine Punkte für diesen Zug
-		_update_ui()
-		
-		# Event auslösen, um die UI zu aktualisieren
-		EventManager.emit_signal("score_updated", {
-			"current_score": _current_score,
-			"points_this_round": 0,
-			"streak": 0,
-			"descriptions": ["Kein Paar gefunden"]
-		})
+	print("ScoreManager: Mismatch - Streak wird zurückgesetzt")
+	_current_streak = 0
+	_streak_multiplier = 1
+	_last_round_points = 0  # Keine Punkte für diesen Zug
+	
+	# UI aktualisieren
+	if _factor_two_label:
+		_factor_two_label.text = "0"  # Direkt 0 Punkte anzeigen
+	
+	# Event auslösen, um die UI zu aktualisieren
+	EventManager.emit_signal("score_updated", {
+		"current_score": _current_score,
+		"points_this_round": 0,
+		"streak": 0,
+		"descriptions": ["Kein Paar gefunden"]
+	})
 
 func _on_all_pairs_found() -> void:
 	# Update score for all pairs found
