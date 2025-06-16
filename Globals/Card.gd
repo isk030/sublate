@@ -61,7 +61,7 @@ func mark_matched() -> void:
 	texture_normal = matched_texture
 	disabled = true
 	matched.emit(self)
-	show_points(50)
+	show_points(50, Color.DARK_GREEN, true)
 
 func is_face_up() -> bool:
 	return _is_face_up
@@ -80,12 +80,26 @@ func _ready() -> void:
 # ------------------------------------------------------------------ #
 
 # Spawn a floating text at the card's position indicating points earned
-func show_points(points: int) -> void:
+func _center_floating_label(flbl: Control) -> void:
+	if not is_instance_valid(flbl):
+		return
+	flbl.position = (size - flbl.size) / 2
+
+#
+func show_points(points: int, p_color: Color = Color.WHITE, p_bold: bool = false) -> void:
 	var lbl := FloatingLabel.new()
 	lbl.text = "+" + str(points)
+	lbl.start_color = p_color
+	lbl.bold = p_bold
 	add_child(lbl)
-	# Place in the center of the card (local coordinates)
-	lbl.position = size / 2
+	# Center within card
+	# reset anchors to top-left so we can place via position
+	lbl.anchor_left = 0
+	lbl.anchor_top = 0
+	lbl.anchor_right = 0
+	lbl.anchor_bottom = 0
+	# defer centering until label has size
+	call_deferred("_center_floating_label", lbl)
 	lbl.start()
 
 
