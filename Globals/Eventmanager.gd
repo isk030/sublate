@@ -2,14 +2,17 @@
 extends Node
 
 # Signals
-# warning-ignore:unused_signal
+# These signals are used via the event system, so we ignore the unused signal warnings
+@warning_ignore("unused_signal")
 signal pair_found(data)
-# warning-ignore:unused_signal
+@warning_ignore("unused_signal")
 signal mismatch_attempt()
-# warning-ignore:unused_signal
+@warning_ignore("unused_signal")
 signal all_pairs_found()
-# warning-ignore:unused_signal
+@warning_ignore("unused_signal")
 signal card_flipped_by_user(card)
+@warning_ignore("unused_signal")
+signal score_updated(data)
 
 # Map event names to signal names for compatibility.
 const _EVENT_SIGNAL_MAP: Dictionary = {
@@ -17,6 +20,7 @@ const _EVENT_SIGNAL_MAP: Dictionary = {
 	"mismatch_attempt": &"mismatch_attempt",
 	"all_pairs_found": &"all_pairs_found",
 	"card_flipped_by_user": &"card_flipped_by_user",
+	"score_updated": &"score_updated",
 }
 
 # ------------------------------------------------------------------ #

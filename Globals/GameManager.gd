@@ -1,5 +1,11 @@
 extends Node
 
+# Class References
+const CardRhythmManager = preload("res://Globals/CardRhythmManager.gd")
+
+# References
+var card_rhythm_manager: Node = null
+
 # Constants
 const DELAY_TIME: float = 1.0
 const CARD_PAIR_COUNT: int = 8
@@ -24,7 +30,44 @@ var _total_pairs_to_find: int = 0
 
 # Engine ready
 func _ready() -> void:
-	# Initialisiere den Zufallsgenerator mit einem festen Seed für reproduzierbare Ergebnisse
+	# Add self to GameManager group for better discovery
+	add_to_group("GameManager")
+	
+	# Initialize random number generator
+	randomize()
+	
+	# Create and add CardRhythmManager if it doesn't exist
+	card_rhythm_manager = get_node_or_null("/root/CardRhythmManager")
+	if not card_rhythm_manager:
+		print("Creating new CardRhythmManager...")
+		card_rhythm_manager = CardRhythmManager.new()
+		card_rhythm_manager.name = "CardRhythmManager"
+		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
+		# Use call_deferred to add the child safely
+		get_node("/root").call_deferred("add_child", card_rhythm_manager)
+		print("Created and added CardRhythmManager to scene tree")
+		
+		# Print the full path after the node is added
+		call_deferred("_print_rhythm_manager_path")
+	else:
+		print("Found existing CardRhythmManager")
+		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
+
+# Helper function to print the path after the node is added
+func _print_rhythm_manager_path() -> void:
+	if card_rhythm_manager:
+		print("CardRhythmManager path: ", card_rhythm_manager.get_path())
+	else:
+		print("CardRhythmManager not found after creation")
+	
+	# Connect signals
+	if card_rhythm_manager.has_signal("card_flipped_in_rhythm"):
+		if not card_rhythm_manager.card_flipped_in_rhythm.is_connected(_on_card_flipped_in_rhythm):
+			card_rhythm_manager.card_flipped_in_rhythm.connect(_on_card_flipped_in_rhythm)
+	else:
+		printerr("CardRhythmManager is missing the 'card_flipped_in_rhythm' signal")
+	
+	# Initialize random number generator with a fixed seed for reproducible results
 	var random_seed = 42
 	seed(random_seed)
 	print("Zufallsgenerator initialisiert mit Seed: ", random_seed)
@@ -112,19 +155,48 @@ func _on_card_flipped(card) -> void:
 func _evaluate_pair() -> void:
 	var is_match: bool = _first_flipped_card.card_identifier == _second_flipped_card.card_identifier
 	var timer := get_tree().create_timer(DELAY_TIME)
+	print("\n--- Evaluating pair ---")
+	print("First card (", _first_flipped_card.name, ") was in rhythm: ", _first_flipped_card.was_flipped_in_rhythm)
+	print("Second card (", _second_flipped_card.name, ") was in rhythm: ", _second_flipped_card.was_flipped_in_rhythm)
+	print("First card modulate: ", _first_flipped_card.modulate)
+	print("Second card modulate: ", _second_flipped_card.modulate)
+	if card_rhythm_manager:
+		print("Highlight color: ", card_rhythm_manager.highlight_color)
+	
 	timer.timeout.connect(func():
 		if not (is_instance_valid(_first_flipped_card) and is_instance_valid(_second_flipped_card)):
 			_finalize_turn()
 			return
 
+		# Check for heat bonus (both cards flipped in rhythm)
+		var heat_bonus: int = 0
+		if _first_flipped_card.was_flipped_in_rhythm and _second_flipped_card.was_flipped_in_rhythm:
+			heat_bonus = 100
+			print("HEAT BONUS! +100 points for perfect rhythm!")
+			EventManager.emit_event("heat_bonus", {"bonus": heat_bonus})
+		else:
+			print("No heat bonus - one or both cards not flipped in rhythm")
+		
 		if is_match:
+			print("Cards match! Applying points...")
 			_first_flipped_card.mark_matched()
 			_second_flipped_card.mark_matched()
 			_pairs_found += 1
+			# Show passive buff +10 on previously matched cards
+			if card_area:
+				var grid := card_area.get_node_or_null("GridContainer")
+				if grid:
+					for child in grid.get_children():
+						if child.get_script() == _card_script and child != _first_flipped_card and child != _second_flipped_card and child.is_matched:
+							if child.has_method("show_points"):
+								child.show_points(10)
+			print("Emitting pair_found event with heat_bonus: ", heat_bonus)
 			EventManager.emit_event("pair_found", {
 				"pairs_found": _pairs_found,
-				"total_pairs": _total_pairs_to_find
+				"total_pairs": _total_pairs_to_find,
+				"heat_bonus": heat_bonus
 			})
+			
 			if _pairs_found == _total_pairs_to_find:
 				EventManager.emit_event("all_pairs_found")
 		else:
@@ -162,3 +234,6 @@ func _set_interaction_on_other_cards(p_disable: bool) -> void:
 
 func can_player_flip_card() -> bool:
 	return _state != GameState.States.PAUSE
+
+func _on_card_flipped_in_rhythm(card: Node) -> void:
+	print("Perfect rhythm! Card flipped at the right time: ", card.card_identifier if card else "unknown")

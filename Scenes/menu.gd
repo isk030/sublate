@@ -8,7 +8,8 @@ signal continue_requested
 @onready var _continue_button: Button = %Continue
 @onready var _start_button: Button = %StartButton
 @onready var _exit_button: Button = %ExitButton
-@onready var _error_label: Label = %ErrorLabel
+# Error label is optional
+@onready var _error_label: Label = %ErrorLabel if has_node("%ErrorLabel") else null
 
 var _opened_via_escape := false
 
@@ -41,6 +42,8 @@ func _connect_signals() -> void:
 func _initialize_ui() -> void:
 	if _error_label:
 		_error_label.visible = false
+	else:
+		print("Hinweis: Kein ErrorLabel in der Szene gefunden")
 	if _continue_button:
 		_continue_button.visible = false
 

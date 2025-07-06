@@ -1,9 +1,26 @@
 extends Node
 
+# Importe
+const BASE_POINTS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/BasePointsModifier.gd")
+const STREAK_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/StreakModifier.gd")
+const HEAT_BONUS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/HeatBonusModifier.gd")
+const MODIFIER_MANAGER_SCRIPT = preload("res://Scoring/ModifierManager.gd")
+
+# Modifier-Instanzen
+var _modifier_manager = null
+var _base_points_modifier = null
+var _streak_modifier = null
+var _heat_bonus_modifier = null
+
 # UI Referenzen
 @onready var _total_score_label: Label = null
 @onready var _factor_one_label: Label = null  # Für Streak-Anzeige
 @onready var _factor_two_label: Label = null  # Punkte des letzten Zugs
+var _game_won_message_label: Label = null
+
+# Fortschrittsanzeige
+@onready var _score_progress_bar: ProgressBar = null
+var _max_score_target: float = 10000.0  # Standardwert für max. Punktzahl
 
 # Spielzustand
 var _current_score: int = 0
@@ -11,12 +28,6 @@ var _pairs_found: int = 0
 var _current_streak: int = 0
 var _streak_multiplier: int = 1
 var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
-
-# Konstanten
-const POINTS_PER_PAIR: int = 100
-const POINTS_PER_PREVIOUS_PAIR: int = 20
-const MAX_STREAK_MULTIPLIER: int = 10  # Maximaler Multiplikator (für längere Streaks)
-var _game_won_message_label: Label = null
 
 # Debug Funktionen
 func _print_debug_info() -> void:
@@ -32,42 +43,140 @@ func set_score_labels(total_label: Label, factor1_label: Label, factor2_label: L
 	_factor_two_label = factor2_label
 	
 	# Initiale UI-Aktualisierung
-	_update_streak_display()
-	if _total_score_label:
-		_total_score_label.text = str(_current_score)
-	
+	_update_ui()
 	print("ScoreManager: UI-Labels gesetzt")
+
+func set_progress_bar(progress_bar: ProgressBar) -> void:
+	print("\n==== set_progress_bar CALLED ====")
+	print("Progress bar reference received:", progress_bar)
+	
+	if not progress_bar:
+		push_error("ScoreManager: No progress bar provided to set_progress_bar")
+		return
+		
+	_score_progress_bar = progress_bar
+	print("ScoreManager: Progress bar connected - Initializing with score:", _current_score, "/", _max_score_target)
+	
+	# Set max value
+	_score_progress_bar.max_value = _max_score_target
+	print("Set max value to:", _score_progress_bar.max_value)
+	
+	# Force value update
+	_score_progress_bar.value = _current_score
+	print("Set initial value to:", _score_progress_bar.value)
+	
+	# Try to find and update the score label
+	# First try to find the ScoreLabel directly as a child
+	var score_label = _score_progress_bar.get_node_or_null("ScoreLabel")
+	if not score_label:
+		print("ScoreLabel not found as direct child, searching for any Label...")
+		for child in _score_progress_bar.get_children():
+			if child is Label:
+				score_label = child
+				print("Found label:", child.name, " of type:", child.get_class())
+				break
+	
+	if score_label:
+		score_label.text = str(_current_score)
+		print("Updated score label to:", score_label.text)
+	else:
+		print("Warning: Could not find any label in progress bar to update")
+	
+	print("==== set_progress_bar DONE ====")
+
+func _init() -> void:
+	# Modifier initialisieren
+	_modifier_manager = MODIFIER_MANAGER_SCRIPT.new()
+	
+	# Modifier erstellen
+	_base_points_modifier = BASE_POINTS_MODIFIER_SCRIPT.new()
+	_streak_modifier = STREAK_MODIFIER_SCRIPT.new()
+	_heat_bonus_modifier = HEAT_BONUS_MODIFIER_SCRIPT.new()
+	
+	# Modifier in der richtigen Reihenfolge hinzufügen
+	_modifier_manager.add_modifier(_base_points_modifier)
+	_modifier_manager.add_modifier(_streak_modifier)
+	_modifier_manager.add_modifier(_heat_bonus_modifier)
+	
+	print("ScoreManager: Modifier initialisiert - ", _modifier_manager.get_modifier_list())
 
 func _ready() -> void:
 	print("ScoreManager (Autoload) bereit.")
 	EventManager.connect_to_event("pair_found", Callable(self, &"_on_pair_found"))
 	EventManager.connect_to_event("mismatch_attempt", Callable(self, &"_on_mismatch_attempt"))
 	EventManager.connect_to_event("all_pairs_found", Callable(self, &"_on_all_pairs_found"))
-	# Optional: If you have a label in your scene for game won messages
-	# Search for it. Make sure it's part of the scene tree where ScoreManager can find it.
-	# This example assumes it might be a child of the main scene's root, or a sibling of ScoreManager's UI parent.
-	# Adjust path as necessary, or set it up via set_game_won_message_label_ref from Main.gd
-	# _game_won_message_label = get_tree().root.find_child("GameWonMessageLabel", true, false) 
-	# if _game_won_message_label:
-	# 	_game_won_message_label.visible = false # Hide initially
+
+func setup_ui_references(panel: Control) -> void:
+	print("ScoreManager: Connecting UI references...")
+	
+	# Labels für Punktanzeige finden
+	_total_score_label = panel.get_node_or_null("VBoxContainer/TotalScoreContainer/ScoreValue")
+	_factor_one_label = panel.get_node_or_null("VBoxContainer/FactorsContainer/StreakFactor")
+	_factor_two_label = panel.get_node_or_null("VBoxContainer/FactorsContainer/LastRoundFactor")
+	_game_won_message_label = panel.get_node_or_null("VBoxContainer/GameWonContainer/GameWonLabel")
+	
+	# Fortschrittsanzeige finden (in der ScoreBar)
+	var score_bar = panel.get_parent().get_node_or_null("../ScoreBar")
+	if score_bar:
+		_score_progress_bar = score_bar.get_node_or_null("%ScoreProgressBar")
+		if _score_progress_bar:
+			# Standardwerte setzen
+			_score_progress_bar.max_value = _max_score_target
+			_score_progress_bar.value = 0
+			print("ScoreManager: Progress bar connected successfully")
+		else:
+			push_error("ScoreManager: Failed to find progress bar")
+	
+	if _total_score_label and _factor_one_label and _factor_two_label:
+		print("ScoreManager: UI labels connected successfully")
+	else:
+		push_error("ScoreManager: Failed to connect UI labels")
 
 func reset_score_panel() -> void:
 	# Setze nur die UI-Elemente zurück, nicht den Score
 	if _total_score_label:
 		_total_score_label.text = str(_current_score)
-	_update_streak_display()
-	
+	if _factor_one_label:
+		_factor_one_label.text = "1"
+	if _factor_two_label:
+		_factor_two_label.text = "0"  # Changed from "100" to "0"
 	if _game_won_message_label:
-		_game_won_message_label.text = ""
 		_game_won_message_label.visible = false
+	# Fortschrittsanzeige zurücksetzen
+	if _score_progress_bar:
+		_score_progress_bar.value = _current_score
+		# Label aktualisieren
+		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		if score_label:
+			score_label.text = str(_current_score)
 	
 	print("ScoreManager: Score-Panel UI zurückgesetzt")
-	# Debug-Nachricht, wenn das Haupt-Score-Label fehlt
-	if not _total_score_label:
-		print_debug("ScoreManager: _total_score_label ist nicht gesetzt. Das ist normal beim ersten Laden.")
+
+func reset_score_progress_bar() -> void:
+	# Fortschrittsanzeige vollständig zurücksetzen
+	if _score_progress_bar:
+		_score_progress_bar.value = 0
+		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		if score_label:
+			score_label.text = "0"
+
+# Fügt Punkte hinzu
+func add_score(score: int) -> void:
+	print("\n==== add_score CALLED ====")
+	print("Adding score: ", score, " to current score: ", _current_score)
+	_current_score += score
+	print("New total score: ", _current_score)
+	print("Progress bar exists: ", _score_progress_bar != null)
+	if _score_progress_bar:
+		print("Progress bar max value: ", _score_progress_bar.max_value)
+		print("Progress bar current value: ", _score_progress_bar.value)
+	_update_ui()
+	print("==== add_score DONE ====")
 
 # Diese Funktion wird aufgerufen, wenn ein neues Spiel beginnt
 func reset_game() -> void:
+	# Alle Punktestände und Zustände zurücksetzen
+	print("\n==== reset_game CALLED ====")
 	_current_score = 0
 	_pairs_found = 0
 	_current_streak = 0
@@ -76,78 +185,134 @@ func reset_game() -> void:
 	
 	# UI aktualisieren
 	reset_score_panel()
+	print("==== reset_game DONE ====")
+	reset_score_progress_bar()
+		
 	print("ScoreManager: Spiel zurückgesetzt - Score: 0")
 
-func _calculate_pair_found_passive_buff() -> int:
-	# Returns additional points based on previously found pairs, multipliziert mit Streak-Multiplikator
-	return _pairs_found * POINTS_PER_PREVIOUS_PAIR * _streak_multiplier
-
-func _update_streak_display() -> void:
-	# Zeige den aktuellen Streak an (mindestens 1)
-	var display_streak = max(1, _current_streak)
+func _update_ui() -> void:
+	print("\n==== _update_ui CALLED ====")
+	print("Current score: ", _current_score)
+	print("Progress bar reference: ", _score_progress_bar)
+	if _score_progress_bar:
+		print("Before update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 	
-	# Aktualisiere das Streak-Label
-	if is_instance_valid(_factor_one_label):
-		_factor_one_label.text = str(display_streak)
-	
-	# Aktualisiere das Punkte-Label mit den Punkten des letzten Zugs
-	if is_instance_valid(_factor_two_label):
-		_factor_two_label.text = str(_last_round_points)
-
-func _on_pair_found(_data: Dictionary) -> void:
-	# Streak um 1 erhöhen, wenn das letzte Paar erfolgreich war
-	# Ansonsten beginnt ein neuer Streak bei 1
-	if _current_streak > 0:
-		_current_streak += 1
-	else:
-		_current_streak = 1
-	
-	_streak_multiplier = min(_current_streak, MAX_STREAK_MULTIPLIER)
-	
-	# Anzahl der gefundenen Paare erhöhen
-	_pairs_found += 1
-	
-	# Basispunkte für dieses Paar (100 für das erste Paar, dann +20 für jedes weitere)
-	var base_points = POINTS_PER_PAIR + ((_pairs_found - 1) * POINTS_PER_PREVIOUS_PAIR)
-	
-	# Punkte für diese Runde berechnen (OHNE Multiplikator für die Anzeige)
-	_last_round_points = base_points  # OHNE Multiplikator für die Anzeige
-	
-	# Punkte für diese Runde MIT Multiplikator berechnen und zum Gesamtscore addieren
-	var points_this_round = base_points * _streak_multiplier
-	_current_score += points_this_round
-	
-	# Debug-Ausgabe
-	print("Paar ", _pairs_found, ": ", 
-		base_points, " x ", _streak_multiplier, " = ", points_this_round, 
-		" (Streak: ", _current_streak, "x, Gesamt: ", _current_score, ")")
-	
-	# UI aktualisieren
+	# Update total score label
 	if _total_score_label:
 		_total_score_label.text = str(_current_score)
-	_update_streak_display()
+		print("Total score label updated to: ", _current_score)
+	
+	# Update streak factor
+	if _factor_one_label:
+		_factor_one_label.text = str(max(1, _current_streak))
+	
+	# Update points display
+	if _factor_two_label:
+		# Calculate points - show 0 at start, then 100 for first pair, +20 for each additional pair
+		var base_points = 0
+		if _pairs_found > 0:
+			base_points = 100 + (max(0, _pairs_found) * 20)  # Fixed base points calculation
+		# Add heat bonus if both cards were flipped in rhythm
+		# Check if there was a heat bonus in the last pair found
+		var heat_bonus = 100 if _pairs_found > 0 and _current_streak > 0 else 0
+		var total_flat_points = base_points + heat_bonus
+		_factor_two_label.text = str(total_flat_points)
+	
+	# Update progress bar and its label
+	if _score_progress_bar:
+		print("Updating progress bar from ", _score_progress_bar.value, " to ", _current_score)
+		
+		# Update progress bar value
+		print("Setting progress bar value to: ", _current_score)
+		_score_progress_bar.value = _current_score
+		print("After update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
+		
+		# Find and update the score label inside the progress bar
+		var score_label = _score_progress_bar.get_node_or_null("ScoreLabel")  # Direct child of ScoreProgressBar
+		
+		# Fallback: Try to find any Label in the progress bar
+		if not score_label:
+			for child in _score_progress_bar.get_children():
+				if child is Label:
+					score_label = child
+					break
+		
+		if score_label:
+			score_label.text = str(_current_score)
+			print("ScoreLabel in progress bar updated to: ", _current_score)
+		else:
+			print("Warning: Could not find ScoreLabel in progress bar")
+	else:
+		print("Warning: No progress bar found to update!")
+	
+	print("==== _update_ui DONE ====")
+
+func _on_pair_found(data: Dictionary) -> void:
+	print("\n--- ScoreManager: pair_found event received ---")
+	print("Data received: ", data)
+	
+	# Streak aktualisieren
+	_current_streak = 1 if _current_streak == 0 else _current_streak + 1
+	_streak_multiplier = min(_current_streak, 10)  # MAX_STREAK_MULTIPLIER
+	
+	# Paarzähler erhöhen
+	_pairs_found = data.get("pairs_found", _pairs_found + 1)
+	
+	# Basis-Punkte berechnen (100 für das erste Paar, dann +20 pro weiteres Paar)
+	# _pairs_found ist 1-basiert, also für das erste Paar ist _pairs_found = 1
+	var base_points = 100 + (max(0, _pairs_found) * 20)
+	
+	# Heat Bonus prüfen (100 Punkte wenn im Rhythmus)
+	var heat_bonus = 100 if data.get("heat_bonus", 0) > 0 else 0
+	
+	# Gesamt-Punkte für diese Runde (ohne Multiplikator)
+	var round_points = base_points + heat_bonus
+	
+	# Punkte mit Streak-Multiplikator berechnen
+	_last_round_points = round_points * max(1, _current_streak)
+	_current_score += _last_round_points
 	
 	# Debug-Ausgabe
-	print("ScoreManager: Pair found! ", 
-		"Streak: %dx, " % _current_streak,
-		"Multiplier: %dx, " % _streak_multiplier,
-		"Base: %d, " % base_points, 
-		"Total: %d" % _last_round_points, 
-		" (Score: %d, Pairs: %d)" % [_current_score, _pairs_found])
+	print("Paar ", _pairs_found, ":")
+	print("  Basis: ", base_points)
+	if heat_bonus > 0:
+		print("  + Heat Bonus: ", heat_bonus)
+	print("  * Streak: ", max(1, _current_streak), "x")
+	print("  = Rundenpunkte: ", _last_round_points)
+	print("  Gesamtpunktzahl: ", _current_score)
+	print("  (Aktueller Streak: ", _current_streak, ")")
+	
+	# UI aktualisieren
+	_update_ui()
 
 func _on_mismatch_attempt() -> void:
 	# Streak zurücksetzen bei Fehlversuch
-	if _current_streak > 0:
-		print("ScoreManager: Streak broken! War bei ", _current_streak, "x")
-		_current_streak = 0
-		_streak_multiplier = 1
-		_last_round_points = 0  # Keine Punkte bei Fehlversuch
-		# Die Anzahl der gefundenen Paare (_pairs_found) bleibt unverändert,
-		# damit die Gesamtpunktzahl erhalten bleibt.
-		# Der nächste Treffer beginnt wieder mit Streak 1
-		_update_streak_display()  # Aktualisiere die Anzeige
+	print("ScoreManager: Mismatch - Streak wird zurückgesetzt")
+	_current_streak = 0
+	_streak_multiplier = 1
+	_last_round_points = 0  # Keine Punkte für diesen Zug
+	
+	# UI aktualisieren
+	if _factor_two_label:
+		_factor_two_label.text = "0"  # Direkt 0 Punkte anzeigen
+	
+	# Event auslösen, um die UI zu aktualisieren
+	EventManager.emit_signal("score_updated", {
+		"current_score": _current_score,
+		"points_this_round": 0,
+		"streak": 0,
+		"descriptions": ["Kein Paar gefunden"]
+	})
 
 func _on_all_pairs_found() -> void:
 	# Update score for all pairs found
 	if _game_won_message_label:
+		_game_won_message_label.text = "Gewonnen! Score: " + str(_current_score)
 		_game_won_message_label.visible = true
+	print("ScoreManager: Alle Paare gefunden! Endscore: ", _current_score)
+
+# Wird von Main.gd aufgerufen, um die Referenz auf das GameWonMessageLabel zu setzen
+func set_game_won_message_label(label_ref: Label) -> void:
+	_game_won_message_label = label_ref
+	if _game_won_message_label:
+		_game_won_message_label.visible = false

@@ -38,9 +38,13 @@ func create_texture_pool(pair_count: int) -> Array[Texture2D]:
 	var rng = RandomNumberGenerator.new()
 	rng.seed = 42  # Gleicher Seed wie im GameManager
 	
-	# Mischen der einzigartigen Texturen
+	# Mischen der einzigartigen Texturen mit Fisher-Yates Shuffle
 	var shuffled_textures = unique_textures.duplicate()
-	shuffled_textures.sort_custom(func(a, b): return rng.randi() % 2 == 0)
+	for i in range(shuffled_textures.size() - 1, 0, -1):
+		var j = rng.randi() % (i + 1)
+		var temp = shuffled_textures[i]
+		shuffled_textures[i] = shuffled_textures[j]
+		shuffled_textures[j] = temp
 	
 	# Erstelle Paare
 	var pool: Array[Texture2D] = []
@@ -48,8 +52,12 @@ func create_texture_pool(pair_count: int) -> Array[Texture2D]:
 		var t: Texture2D = shuffled_textures[i % shuffled_textures.size()]
 		pool.append_array([t, t])
 	
-	# Mischen der Paare mit dem gleichen Seed
-	pool.sort_custom(func(a, b): return rng.randi() % 2 == 0)
+	# Mischen der Paare mit Fisher-Yates Shuffle
+	for i in range(pool.size() - 1, 0, -1):
+		var j = rng.randi() % (i + 1)
+		var temp = pool[i]
+		pool[i] = pool[j]
+		pool[j] = temp
 	
 	return pool
 
