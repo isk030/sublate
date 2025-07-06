@@ -5,6 +5,9 @@ signal flipped(card)
 signal matched(card)
 signal state_changed(card, is_face_up: bool)
 
+# Configuration
+static var enable_buff_animations: bool = false  # Controls whether to show buff animations
+
 @export var card_identifier: Variant = null
 @export var face_texture: Texture2D = null
 @export var back_texture: Texture2D = null
@@ -81,6 +84,10 @@ func _ready() -> void:
 
 # Spawn a floating text at the card's position indicating points earned
 func show_points(points: int) -> void:
+	# Skip buff animations if they are disabled
+	if points == 10 and not enable_buff_animations:
+		return
+		
 	var lbl := FloatingLabel.new()
 	lbl.text = "+" + str(points)
 	

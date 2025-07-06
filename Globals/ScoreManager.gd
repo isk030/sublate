@@ -29,6 +29,10 @@ var _current_streak: int = 0
 var _streak_multiplier: int = 1
 var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
 
+# Bonus-Einstellungen (können über ShopUI aktiviert werden)
+var _enable_heat_bonus: bool = false
+var _enable_base_point_increase: bool = false
+
 # Debug Funktionen
 func _print_debug_info() -> void:
 	print("--- ScoreManager Debug ---")
@@ -203,23 +207,26 @@ func _update_ui() -> void:
 	if _total_score_label:
 		_total_score_label.text = str(_current_score)
 	
-	# Update factor one (streak multiplier)
+	# Update factor one (streak multiplier) - always show at least 1
 	if _factor_one_label:
 		_factor_one_label.text = str(max(1, _current_streak))
 	
 	# Update factor two (base points + heat bonus)
 	if _factor_two_label:
-		# If we're in a mismatch state (current_streak == 0), keep showing 0
+		# If we're in a mismatch state (current_streak == 0), show 0
 		if _current_streak == 0:
 			_factor_two_label.text = "0"
 		else:
-			# Calculate points for a successful match
-			var current_heat_bonus = 100 if _current_streak > 1 else 0
-			var base_points = 100 + (max(0, _pairs_found - 1) * 20)
-			var factor2 = base_points + current_heat_bonus
-			if _pairs_found == 1 && _current_streak > 1:
-				factor2 = 200  # Special case for first pair with heat bonus
-			_factor_two_label.text = str(factor2)
+			# Calculate base points (100 for first pair, more if enabled)
+			var base_points = 100
+			if _enable_base_point_increase and _pairs_found > 1:
+				base_points += (_pairs_found - 1) * 20
+			
+			# Calculate heat bonus if enabled
+			var heat_bonus = 100 if (_enable_heat_bonus and _current_streak > 1) else 0
+			
+			# Update factor two label (base points + heat bonus, without streak multiplier)
+			_factor_two_label.text = str(base_points + heat_bonus)
 	
 	# Update progress bar if available
 	if _score_progress_bar:
@@ -269,23 +276,25 @@ func _on_pair_found(data: Dictionary) -> void:
 	# Increase streak for every match
 	_current_streak = 1 if _current_streak == 0 else _current_streak + 1
 	
-	# For the first pair, use special scoring
+	# Apply base points (100 for first pair, 100 + 20*(n-1) for subsequent pairs if enabled)
+	var base_points = 100
+	if _enable_base_point_increase and _pairs_found > 1:
+		base_points += (_pairs_found - 1) * 20
+
+	# Apply heat bonus if enabled and in rhythm
+	var rhythm_bonus = 100 if (_enable_heat_bonus and was_in_rhythm) else 0
+
+	# Calculate points with streak multiplier
 	if _pairs_found == 1:
-		# First pair: 100 points for match, 200 if on beat
-		_last_round_points = 200 if was_in_rhythm else 100
-		
-		# Update factor two label immediately
-		if _factor_two_label:
-			_factor_two_label.text = "200" if was_in_rhythm else "100"
+		# First pair: 100 points, plus 100 if in rhythm and heat bonus is enabled
+		_last_round_points = base_points + rhythm_bonus
 	else:
-		# For subsequent pairs, use normal scoring with streak multiplier
-		var base_points = 100 + ((_pairs_found - 1) * 20)  # Base points increase by 20 per pair
-		var rhythm_bonus = 100 if was_in_rhythm else 0
+		# Subsequent pairs: base points + rhythm bonus, multiplied by streak
 		_last_round_points = max(1, _current_streak) * (base_points + rhythm_bonus)
-		
-		# Update factor two label for subsequent pairs
-		if _factor_two_label:
-			_factor_two_label.text = str(base_points + rhythm_bonus)
+
+	# Update factor two label to show base points + rhythm bonus (without streak multiplier)
+	if _factor_two_label:
+		_factor_two_label.text = str(base_points + rhythm_bonus)
 	
 	# Add to total score
 	_current_score += _last_round_points
@@ -337,3 +346,12 @@ func set_game_won_message_label(label_ref: Label) -> void:
 	_game_won_message_label = label_ref
 	if _game_won_message_label:
 		_game_won_message_label.visible = false
+
+# Bonus activation methods for ShopUI
+func set_heat_bonus_enabled(enabled: bool) -> void:
+	_enable_heat_bonus = enabled
+	print("Heat bonus ", "enabled" if enabled else "disabled")
+
+func set_base_point_increase_enabled(enabled: bool) -> void:
+	_enable_base_point_increase = enabled
+	print("Base point increase ", "enabled" if enabled else "disabled")
