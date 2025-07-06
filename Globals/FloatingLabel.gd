@@ -23,7 +23,7 @@ func start() -> void:
 
 func _begin_animation() -> void:
     pivot_offset = size / 2.0
-    z_index = 100  # ensure on top
+    z_index = 5  # Niedrigerer z_index als die ShopUI (welche z_index 6 hat)
     var tween := create_tween()
     tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
     tween.tween_property(self, "position:y", position.y - rise_distance, duration)

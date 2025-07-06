@@ -97,6 +97,12 @@ func show_points(points: int) -> void:
 	# Skip buff animations if they are disabled
 	if points == 10 and not enable_buff_animations:
 		return
+	
+	# Überprüfen, ob die ShopUI sichtbar ist
+	var shop_ui = get_node_or_null("/root/Main/ShopUI") 
+	if shop_ui and shop_ui.visible:
+		print("ShopUI is visible, skipping floating label")
+		return
 		
 	var lbl := FloatingLabel.new()
 	lbl.text = "+" + str(points)

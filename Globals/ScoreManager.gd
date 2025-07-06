@@ -263,11 +263,11 @@ func _update_ui() -> void:
 			if _enable_base_point_increase and _pairs_found > 1:
 				base_points += (_pairs_found - 1) * 20
 			
-			# Calculate heat bonus if enabled
-			var heat_bonus = 100 if (_enable_heat_bonus and _current_streak > 1) else 0
+			# KEINE Heat-Bonus-Anzeige im UI-Update - der Heat-Bonus wird nur 
+			# in _on_pair_found() angewendet, wenn die Karte wirklich im Rhythmus geflippt wurde
 			
-			# Update factor two label (base points + heat bonus, without streak multiplier)
-			_factor_two_label.text = str(base_points + heat_bonus)
+			# Update factor two label (nur base points ohne heat bonus in der Anzeige)
+			_factor_two_label.text = str(base_points)
 	
 	# Update progress bar if available
 	if _score_progress_bar:
