@@ -8,6 +8,7 @@ extends Control
 @onready var _ui_factor_two: Label = $BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer/ColorRect2/Label
 @onready var _ui_card_area: Control = $BackgroundArea/VBoxContainer/HBoxContainer/CardArea
 @onready var _menu: Control = $Menu
+@onready var _shop_ui: Control = $ShopUI
 
 func _ready() -> void:
 	# Stelle sicher, dass der Node Eingaben empfängt
@@ -44,6 +45,7 @@ func _initialize_ui() -> void:
 func _initialize_managers() -> void:
 	_initialize_score_manager()
 	_initialize_game_manager()
+	_connect_score_signals()
 
 func _initialize_score_manager() -> void:
 	if not ScoreManager:
@@ -131,6 +133,40 @@ func _connect_menu_signals() -> void:
 		_menu.game_start_requested.connect(_on_menu_start_pressed)
 		_menu.exit_requested.connect(_on_menu_exit_requested)
 		_menu.continue_requested.connect(_on_menu_continue_pressed)
+
+func _connect_score_signals() -> void:
+	if ScoreManager:
+		if not ScoreManager.score_threshold_reached.is_connected(_on_score_threshold_reached):
+			ScoreManager.score_threshold_reached.connect(_on_score_threshold_reached)
+	
+	# Connect shop UI signals if it exists
+	if _shop_ui:
+		if not _shop_ui.buff_selected.is_connected(_on_shop_buff_selected):
+			_shop_ui.buff_selected.connect(_on_shop_buff_selected)
+
+func _on_score_threshold_reached() -> void:
+	if _shop_ui:
+		print("Showing shop UI...")
+		_shop_ui.visible = true
+		_shop_ui.show_shop()
+		get_tree().paused = true  # Pause the game while shop is open
+
+func _on_shop_buff_selected(buff_type: String) -> void:
+	print("Buff selected: ", buff_type)
+	match buff_type:
+		"heat_bonus":
+			if ScoreManager:
+				ScoreManager.set_heat_bonus_enabled(true)
+				print("Heat bonus enabled!")
+		"base_point_increase":
+			if ScoreManager:
+				ScoreManager.set_base_point_increase_enabled(true)
+				print("Base point increase enabled!")
+	
+	# Resume the game
+	if _shop_ui:
+		_shop_ui.visible = false
+	get_tree().paused = false
 
 func _on_menu_start_pressed() -> void:
 	toggle_menu(false)

@@ -20,7 +20,7 @@ var _game_won_message_label: Label = null
 
 # Fortschrittsanzeige
 @onready var _score_progress_bar: ProgressBar = null
-var _max_score_target: float = 10000.0  # Standardwert für max. Punktzahl
+var _max_score_target: float = 2800.0  # Maximale Punktzahl für die Fortschrittsleiste
 
 # Spielzustand
 var _current_score: int = 0
@@ -29,9 +29,13 @@ var _current_streak: int = 0
 var _streak_multiplier: int = 1
 var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
 
+# Signals
+signal score_threshold_reached()
+
 # Bonus-Einstellungen (können über ShopUI aktiviert werden)
 var _enable_heat_bonus: bool = false
 var _enable_base_point_increase: bool = false
+var _threshold_reached: bool = false  # To track if we've already shown the shop
 
 # Debug Funktionen
 func _print_debug_info() -> void:
@@ -200,6 +204,13 @@ func _update_ui() -> void:
 	print("\n==== _update_ui CALLED ====")
 	print("Current score: ", _current_score)
 	print("Progress bar reference: ", _score_progress_bar)
+	
+	# Check if score reached the threshold and we haven't shown the shop yet
+	if _current_score >= _max_score_target and not _threshold_reached:
+		_threshold_reached = true
+		emit_signal("score_threshold_reached")
+		print("Score threshold reached! Showing shop UI...")
+	
 	if _score_progress_bar:
 		print("Before update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 	
@@ -230,11 +241,12 @@ func _update_ui() -> void:
 	
 	# Update progress bar if available
 	if _score_progress_bar:
-		_score_progress_bar.value = _current_score
-		# Update progress bar value
-		print("Setting progress bar value to: ", _current_score)
-		_score_progress_bar.value = _current_score
-		print("After update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
+		# Set max value if not already set
+		if _score_progress_bar.max_value != _max_score_target:
+			_score_progress_bar.max_value = _max_score_target
+		# Update current value
+		_score_progress_bar.value = min(_current_score, _max_score_target)
+		print("Score progress: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 		
 		# Update score label in progress bar if it exists
 		# First try with %ScoreLabel (if it's a unique name)
@@ -308,6 +320,8 @@ func _on_pair_found(data: Dictionary) -> void:
 	
 	# Update UI to reflect the changes
 	_update_ui()
+
+
 
 func _on_mismatch_attempt() -> void:
 	# Reset streak and multiplier on mismatch
