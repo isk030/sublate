@@ -1,5 +1,8 @@
 extends Node
 
+# Signale
+signal score_bar_full()
+
 # Importe
 const BASE_POINTS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/BasePointsModifier.gd")
 const STREAK_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/StreakModifier.gd")
@@ -194,6 +197,11 @@ func _update_ui() -> void:
 	print("\n==== _update_ui CALLED ====")
 	print("Current score: ", _current_score)
 	print("Progress bar reference: ", _score_progress_bar)
+	
+	# Check if score bar is full
+	if _current_score >= _max_score_target:
+		emit_signal("score_bar_full")
+		
 	if _score_progress_bar:
 		print("Before update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 	
