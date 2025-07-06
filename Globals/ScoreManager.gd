@@ -1,8 +1,5 @@
 extends Node
 
-# Signale
-signal score_bar_full()
-
 # Importe
 const BASE_POINTS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/BasePointsModifier.gd")
 const STREAK_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/StreakModifier.gd")
@@ -186,7 +183,9 @@ func reset_game() -> void:
 	_streak_multiplier = 1
 	_last_round_points = 0
 	
-	# UI aktualisieren
+	# UI zurücksetzen
+	if _factor_two_label:
+		_factor_two_label.text = "0"  # Auf 0 zurücksetzen
 	reset_score_panel()
 	print("==== reset_game DONE ====")
 	reset_score_progress_bar()
@@ -197,46 +196,48 @@ func _update_ui() -> void:
 	print("\n==== _update_ui CALLED ====")
 	print("Current score: ", _current_score)
 	print("Progress bar reference: ", _score_progress_bar)
-	
-	# Check if score bar is full
-	if _current_score >= _max_score_target:
-		emit_signal("score_bar_full")
-		
 	if _score_progress_bar:
 		print("Before update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 	
 	# Update total score label
 	if _total_score_label:
 		_total_score_label.text = str(_current_score)
-		print("Total score label updated to: ", _current_score)
 	
-	# Update streak factor
+	# Update factor one (streak multiplier)
 	if _factor_one_label:
 		_factor_one_label.text = str(max(1, _current_streak))
 	
-	# Update points display
+	# Update factor two (base points + heat bonus)
 	if _factor_two_label:
-		# Calculate points - show 0 at start, then 100 for first pair, +20 for each additional pair
-		var base_points = 0
-		if _pairs_found > 0:
-			base_points = 100 + (max(0, _pairs_found) * 20)  # Fixed base points calculation
-		# Add heat bonus if both cards were flipped in rhythm
-		# Check if there was a heat bonus in the last pair found
-		var heat_bonus = 100 if _pairs_found > 0 and _current_streak > 0 else 0
-		var total_flat_points = base_points + heat_bonus
-		_factor_two_label.text = str(total_flat_points)
+		# If we're in a mismatch state (current_streak == 0), keep showing 0
+		if _current_streak == 0:
+			_factor_two_label.text = "0"
+		else:
+			# Calculate points for a successful match
+			var current_heat_bonus = 100 if _current_streak > 1 else 0
+			var base_points = 100 + (max(0, _pairs_found - 1) * 20)
+			var factor2 = base_points + current_heat_bonus
+			if _pairs_found == 1 && _current_streak > 1:
+				factor2 = 200  # Special case for first pair with heat bonus
+			_factor_two_label.text = str(factor2)
 	
-	# Update progress bar and its label
+	# Update progress bar if available
 	if _score_progress_bar:
-		print("Updating progress bar from ", _score_progress_bar.value, " to ", _current_score)
-		
+		_score_progress_bar.value = _current_score
 		# Update progress bar value
 		print("Setting progress bar value to: ", _current_score)
 		_score_progress_bar.value = _current_score
 		print("After update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 		
-		# Find and update the score label inside the progress bar
-		var score_label = _score_progress_bar.get_node_or_null("ScoreLabel")  # Direct child of ScoreProgressBar
+		# Update score label in progress bar if it exists
+		# First try with %ScoreLabel (if it's a unique name)
+		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		# If not found, try direct child named "ScoreLabel"
+		if not score_label:
+			score_label = _score_progress_bar.get_node_or_null("ScoreLabel")
+		
+		if score_label:
+			score_label.text = str(_current_score)
 		
 		# Fallback: Try to find any Label in the progress bar
 		if not score_label:
@@ -259,57 +260,69 @@ func _on_pair_found(data: Dictionary) -> void:
 	print("\n--- ScoreManager: pair_found event received ---")
 	print("Data received: ", data)
 	
-	# Streak aktualisieren
-	_current_streak = 1 if _current_streak == 0 else _current_streak + 1
-	_streak_multiplier = min(_current_streak, 10)  # MAX_STREAK_MULTIPLIER
+	# Check if in rhythm (on beat) - do this before updating pairs_found
+	var was_in_rhythm = data.get("heat_bonus", 0) > 0
 	
-	# Paarzähler erhöhen
+	# Update pairs found counter
 	_pairs_found = data.get("pairs_found", _pairs_found + 1)
 	
-	# Basis-Punkte berechnen (100 für das erste Paar, dann +20 pro weiteres Paar)
-	# _pairs_found ist 1-basiert, also für das erste Paar ist _pairs_found = 1
-	var base_points = 100 + (max(0, _pairs_found) * 20)
+	# Increase streak for every match
+	_current_streak = 1 if _current_streak == 0 else _current_streak + 1
 	
-	# Heat Bonus prüfen (100 Punkte wenn im Rhythmus)
-	var heat_bonus = 100 if data.get("heat_bonus", 0) > 0 else 0
+	# For the first pair, use special scoring
+	if _pairs_found == 1:
+		# First pair: 100 points for match, 200 if on beat
+		_last_round_points = 200 if was_in_rhythm else 100
+		
+		# Update factor two label immediately
+		if _factor_two_label:
+			_factor_two_label.text = "200" if was_in_rhythm else "100"
+	else:
+		# For subsequent pairs, use normal scoring with streak multiplier
+		var base_points = 100 + ((_pairs_found - 1) * 20)  # Base points increase by 20 per pair
+		var rhythm_bonus = 100 if was_in_rhythm else 0
+		_last_round_points = max(1, _current_streak) * (base_points + rhythm_bonus)
+		
+		# Update factor two label for subsequent pairs
+		if _factor_two_label:
+			_factor_two_label.text = str(base_points + rhythm_bonus)
 	
-	# Gesamt-Punkte für diese Runde (ohne Multiplikator)
-	var round_points = base_points + heat_bonus
-	
-	# Punkte mit Streak-Multiplikator berechnen
-	_last_round_points = round_points * max(1, _current_streak)
+	# Add to total score
 	_current_score += _last_round_points
 	
-	# Debug-Ausgabe
-	print("Paar ", _pairs_found, ":")
-	print("  Basis: ", base_points)
-	if heat_bonus > 0:
-		print("  + Heat Bonus: ", heat_bonus)
-	print("  * Streak: ", max(1, _current_streak), "x")
-	print("  = Rundenpunkte: ", _last_round_points)
-	print("  Gesamtpunktzahl: ", _current_score)
-	print("  (Aktueller Streak: ", _current_streak, ")")
+	# Debug output
+	print("Pair ", _pairs_found, ":")
+	print("  Points: ", _last_round_points)
+	print("  Total score: ", _current_score)
+	print("  In rhythm: ", "Yes" if was_in_rhythm else "No")
+	print("  Current streak: ", _current_streak)
 	
-	# UI aktualisieren
+	# Update UI to reflect the changes
 	_update_ui()
 
 func _on_mismatch_attempt() -> void:
-	# Streak zurücksetzen bei Fehlversuch
-	print("ScoreManager: Mismatch - Streak wird zurückgesetzt")
+	# Reset streak and multiplier on mismatch
+	print("ScoreManager: Mismatch - Resetting streak")
 	_current_streak = 0
 	_streak_multiplier = 1
-	_last_round_points = 0  # Keine Punkte für diesen Zug
+	_last_round_points = 0  # No points for this attempt
 	
-	# UI aktualisieren
+	# Update UI immediately to show 0 points
+	if _factor_one_label:
+		_factor_one_label.text = "1"  # Multiplier stays at least 1
 	if _factor_two_label:
-		_factor_two_label.text = "0"  # Direkt 0 Punkte anzeigen
+		_factor_two_label.text = "0"  # Show 0 immediately on mismatch
+		print("Mismatch - Factor Two set to 0")
 	
-	# Event auslösen, um die UI zu aktualisieren
+	# Update the UI
+	_update_ui()
+	
+	# Emit score update event
 	EventManager.emit_signal("score_updated", {
 		"current_score": _current_score,
 		"points_this_round": 0,
 		"streak": 0,
-		"descriptions": ["Kein Paar gefunden"]
+		"descriptions": ["No match found"]
 	})
 
 func _on_all_pairs_found() -> void:

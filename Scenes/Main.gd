@@ -8,7 +8,6 @@ extends Control
 @onready var _ui_factor_two: Label = $BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/ScorePanel/VBoxContainer/HBoxContainer/ColorRect2/Label
 @onready var _ui_card_area: Control = $BackgroundArea/VBoxContainer/HBoxContainer/CardArea
 @onready var _menu: Control = $Menu
-@onready var _shop_ui: Control = null
 
 func _ready() -> void:
 	# Stelle sicher, dass der Node Eingaben empfängt
@@ -45,7 +44,6 @@ func _initialize_ui() -> void:
 func _initialize_managers() -> void:
 	_initialize_score_manager()
 	_initialize_game_manager()
-	_connect_score_manager_signals()
 
 func _initialize_score_manager() -> void:
 	if not ScoreManager:
@@ -156,27 +154,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			if show_menu:
 				_menu.set_opened_via_escape(true)
 			get_viewport().set_input_as_handled()
-
-func _connect_score_manager_signals() -> void:
-	if ScoreManager:
-		if not ScoreManager.score_bar_full.is_connected(_on_score_bar_full):
-			ScoreManager.score_bar_full.connect(_on_score_bar_full)
-
-func _on_score_bar_full() -> void:
-	show_shop_ui()
-
-func show_shop_ui() -> void:
-	if not _shop_ui:
-		var shop_scene = preload("res://Scenes/shop_ui.tscn")
-		_shop_ui = shop_scene.instantiate()
-		add_child(_shop_ui)
-		# Make sure shop UI is on top
-		move_child(_shop_ui, get_child_count() - 1)
-	_shop_ui.visible = true
-
-func hide_shop_ui() -> void:
-	if _shop_ui:
-		_shop_ui.visible = false
 
 func toggle_menu(show_menu: bool) -> void:
 	if _menu:
