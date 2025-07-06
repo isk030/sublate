@@ -168,6 +168,12 @@ func _on_shop_buff_selected(buff_type: String) -> void:
 			if ScoreManager:
 				ScoreManager.set_base_point_increase_enabled(true)
 				print("Base point increase enabled!")
+			
+			# Aktiviere die Buff-Animationen für den passiven Buff
+			var Card = load("res://Globals/Card.gd")
+			if Card:
+				Card.enable_buff_animations = true
+				print("Card buff animations enabled for base point increase!")
 	
 	# Reset the game for a new run
 	if GameManager:
