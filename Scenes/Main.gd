@@ -158,10 +158,21 @@ func _on_shop_buff_selected(buff_type: String) -> void:
 			if ScoreManager:
 				ScoreManager.set_heat_bonus_enabled(true)
 				print("Heat bonus enabled!")
+			
+			# Aktiviere das Card-Highlighting für den Heat-Buff
+			var rhythm_manager = get_node_or_null("Node")
+			if rhythm_manager and rhythm_manager.get_script() and rhythm_manager.get_script().get_path().ends_with("CardRhythmManager.gd"):
+				rhythm_manager.enable_highlighting = true
+				print("Card highlighting enabled for heat bonus!")
 		"base_point_increase":
 			if ScoreManager:
 				ScoreManager.set_base_point_increase_enabled(true)
 				print("Base point increase enabled!")
+	
+	# Reset the game for a new run
+	if GameManager:
+		GameManager.reset_game()
+		print("Game reset for new run after buff selection")
 	
 	# Resume the game
 	if _shop_ui:

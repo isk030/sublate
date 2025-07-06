@@ -189,6 +189,7 @@ func reset_game() -> void:
 	_pairs_found = 0
 	_current_streak = 0
 	_streak_multiplier = 1
+	_threshold_reached = false  # Shop-Schwellenwert zurücksetzen
 	_last_round_points = 0
 	
 	# UI zurücksetzen
