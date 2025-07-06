@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://5pj1h7kwtmcp"]
+[gd_scene load_steps=16 format=3 uid="uid://5pj1h7kwtmcp"]
 
 [ext_resource type="Script" uid="uid://1pojjuwqhnei" path="res://Scenes/Main.gd" id="1_6iyac"]
 [ext_resource type="PackedScene" uid="uid://b34i7gd50ri4c" path="res://Scenes/background_area.tscn" id="1_jjgbg"]
@@ -13,6 +13,7 @@
 [ext_resource type="AudioStream" uid="uid://d006xdnpgsvwq" path="res://assets/music/Heartbeat AI Music.mp3" id="13_fdnlq"]
 [ext_resource type="Script" uid="uid://c5ms6v210iwdp" path="res://Scenes/audio_stream_player_2d.gd" id="14_jkdf5"]
 [ext_resource type="PackedScene" uid="uid://cikf0r1y6117c" path="res://Scenes/menu.tscn" id="15_abcde"]
+[ext_resource type="PackedScene" uid="uid://dnjcp3hs48f82" path="res://Scenes/shop_ui.tscn" id="15_wsu2k"]
 [ext_resource type="Script" uid="uid://cc2r3u4ubvlqp" path="res://Globals/CardRhythmManager.gd" id="16_k12tt"]
 
 [node name="Main" type="Control"]
@@ -239,3 +240,6 @@ layout_mode = 1
 [node name="Node" type="Node" parent="."]
 script = ExtResource("16_k12tt")
 highlight_duration = 2.0
+
+[node name="ShopUI" parent="." instance=ExtResource("15_wsu2k")]
+layout_mode = 1
