@@ -139,7 +139,7 @@ func reset_score_panel() -> void:
 	if _factor_one_label:
 		_factor_one_label.text = "1"
 	if _factor_two_label:
-		_factor_two_label.text = "100"
+		_factor_two_label.text = "0"  # Changed from "100" to "0"
 	if _game_won_message_label:
 		_game_won_message_label.visible = false
 	# Fortschrittsanzeige zurücksetzen
@@ -208,10 +208,13 @@ func _update_ui() -> void:
 	
 	# Update points display
 	if _factor_two_label:
-		# Calculate base points (100 for first pair, +20 for each previous pair)
-		var base_points = 100 + (max(0, _pairs_found - 1) * 20)
+		# Calculate points - show 0 at start, then 100 for first pair, +20 for each additional pair
+		var base_points = 0
+		if _pairs_found > 0:
+			base_points = 100 + (max(0, _pairs_found) * 20)  # Fixed base points calculation
 		# Add heat bonus if both cards were flipped in rhythm
-		var heat_bonus = 100 if _pairs_found > 0 and _pairs_found % 2 == 0 else 0
+		# Check if there was a heat bonus in the last pair found
+		var heat_bonus = 100 if _pairs_found > 0 and _current_streak > 0 else 0
 		var total_flat_points = base_points + heat_bonus
 		_factor_two_label.text = str(total_flat_points)
 	
@@ -255,8 +258,9 @@ func _on_pair_found(data: Dictionary) -> void:
 	# Paarzähler erhöhen
 	_pairs_found = data.get("pairs_found", _pairs_found + 1)
 	
-	# Basis-Punkte berechnen (100 + 20 pro bereits gefundenes Paar)
-	var base_points = 100 + (max(0, _pairs_found - 1) * 20)
+	# Basis-Punkte berechnen (100 für das erste Paar, dann +20 pro weiteres Paar)
+	# _pairs_found ist 1-basiert, also für das erste Paar ist _pairs_found = 1
+	var base_points = 100 + (max(0, _pairs_found) * 20)
 	
 	# Heat Bonus prüfen (100 Punkte wenn im Rhythmus)
 	var heat_bonus = 100 if data.get("heat_bonus", 0) > 0 else 0
