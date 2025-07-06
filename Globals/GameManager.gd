@@ -237,3 +237,66 @@ func can_player_flip_card() -> bool:
 
 func _on_card_flipped_in_rhythm(card: Node) -> void:
 	print("Perfect rhythm! Card flipped at the right time: ", card.card_identifier if card else "unknown")
+
+# Setzt ein zufällig ausgewähltes, bereits gefundenes Kartenpaar zurück
+# (für das Inventar-Item "Stap Scratch")
+func reset_random_matched_pair() -> bool:
+	print("Versuche, ein zufälliges gefundenes Kartenpaar zurückzusetzen...")
+	if card_area == null:
+		printerr("GameManager: reset_random_matched_pair - card_area is null")
+		return false
+		
+	var card_container: GridContainer = card_area.get_node_or_null("GridContainer")
+	if card_container == null:
+		printerr("GameManager: reset_random_matched_pair - GridContainer not found")
+		return false
+	
+	# Sammle alle gematchten Karten
+	var matched_cards = []
+	for child in card_container.get_children():
+		if child.get_script() == _card_script and child.is_matched:
+			matched_cards.append(child)
+	
+	# Wenn keine gematchten Karten gefunden wurden, können wir nichts zurücksetzen
+	if matched_cards.size() < 2:
+		print("Keine gematchten Kartenpaare gefunden!")
+		return false
+	
+	# Gruppiere die Karten nach ihren IDs
+	var card_groups = {}
+	for card in matched_cards:
+		if not card_groups.has(card.card_identifier):
+			card_groups[card.card_identifier] = []
+		card_groups[card.card_identifier].append(card)
+	
+	# Wähle ein zufälliges Paar aus
+	var card_ids = card_groups.keys()
+	if card_ids.is_empty():
+		return false
+		
+	var random_id = card_ids[randi() % card_ids.size()]
+	var pair_cards = card_groups[random_id]
+	
+	# Stelle sicher, dass wir ein Paar haben
+	if pair_cards.size() != 2:
+		print("Unerwartete Anzahl von Karten mit gleicher ID: ", pair_cards.size())
+		return false
+	
+	print("Setze Kartenpaar mit ID ", random_id, " zurück")
+	
+	# Setze die Karten zurück
+	for card in pair_cards:
+		card.unmark_matched() # Diese Methode muss in Card.gd implementiert werden
+		card.flip_down()
+	
+	# Reduziere die Anzahl der gefundenen Paare
+	_pairs_found -= 1
+	
+	# Sende ein Event, dass ein Paar zurückgesetzt wurde
+	EventManager.emit_event("pair_reset", {
+		"card_id": random_id,
+		"pairs_found": _pairs_found,
+		"total_pairs": _total_pairs_to_find
+	})
+	
+	return true

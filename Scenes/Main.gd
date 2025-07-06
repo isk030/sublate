@@ -9,6 +9,7 @@ extends Control
 @onready var _ui_card_area: Control = $BackgroundArea/VBoxContainer/HBoxContainer/CardArea
 @onready var _menu: Control = $Menu
 @onready var _shop_ui: Control = $ShopUI
+@onready var _inventory_panel: Control = $BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/InventoryPanel
 
 func _ready() -> void:
 	# Stelle sicher, dass der Node Eingaben empfängt
@@ -34,6 +35,8 @@ func _validate_nodes() -> void:
 		missing_nodes.append("FactorTwoLabel")
 	if not _ui_card_area:
 		missing_nodes.append("CardArea")
+	if not _inventory_panel:
+		missing_nodes.append("InventoryPanel")
 	
 	if not missing_nodes.is_empty():
 		push_error("Fehlende UI-Nodes: " + ", ".join(missing_nodes))
@@ -45,6 +48,7 @@ func _initialize_ui() -> void:
 func _initialize_managers() -> void:
 	_initialize_score_manager()
 	_initialize_game_manager()
+	_initialize_inventory_panel()
 	_connect_score_signals()
 
 func _initialize_score_manager() -> void:
@@ -197,6 +201,36 @@ func _on_menu_continue_pressed() -> void:
 
 func _on_menu_exit_requested() -> void:
 	get_tree().quit()
+
+# Initialize the inventory panel and connect item signals
+func _initialize_inventory_panel() -> void:
+	if not _inventory_panel:
+		push_error("Main: InventoryPanel not found")
+		return
+	
+	print("Initializing inventory panel...")
+	
+	# Connect the use_item signal from the inventory panel to handle item usage
+	# This assumes the InventoryPanel has a signal called item_used that's emitted when an item is used
+	if _inventory_panel.has_signal("item_used") and not _inventory_panel.item_used.is_connected(_on_inventory_item_used):
+		_inventory_panel.item_used.connect(_on_inventory_item_used)
+		print("Connected item_used signal from InventoryPanel")
+	else:
+		print("Warning: InventoryPanel does not have an item_used signal or it's already connected")
+
+# Handle inventory item usage
+func _on_inventory_item_used(item_id: String) -> void:
+	print("Item used from inventory: ", item_id)
+	
+	match item_id:
+		"stap_scratch":
+			# Use the stap scratch item to reset a random matched pair
+			if GameManager and GameManager.reset_random_matched_pair():
+				print("Successfully reset a random matched pair using Stap Scratch item")
+			else:
+				print("Failed to reset a matched pair - no pairs found or error occurred")
+		_: 
+			print("Unknown item used: ", item_id)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:

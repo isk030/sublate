@@ -63,6 +63,15 @@ theme_override_font_sizes/font_size = 48
 text = "Shop"
 horizontal_alignment = 1
 
+[node name="ItemNotification" type="Label" parent="VBoxContainer"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.8, 0.9, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+text = "Du hast ein 'Stap Scratch' Item erhalten!"
+horizontal_alignment = 1
+
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4

@@ -66,6 +66,16 @@ func mark_matched() -> void:
 	matched.emit(self)
 	show_points(50)
 
+# Reverses the matched state, making the card available again
+func unmark_matched() -> void:
+	if not _is_matched:
+		return
+	_is_matched = false
+	# Reset to face texture since it was face up when matched
+	texture_normal = face_texture
+	# Card remains face up but can be flipped down later
+	_is_face_up = true
+
 func is_face_up() -> bool:
 	return _is_face_up
 
