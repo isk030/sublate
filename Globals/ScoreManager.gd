@@ -370,3 +370,10 @@ func set_heat_bonus_enabled(enabled: bool) -> void:
 func set_base_point_increase_enabled(enabled: bool) -> void:
 	_enable_base_point_increase = enabled
 	print("Base point increase ", "enabled" if enabled else "disabled")
+
+# Getter-Methoden für den Buff-Status
+func is_heat_bonus_enabled() -> bool:
+	return _enable_heat_bonus
+
+func is_base_point_increase_enabled() -> bool:
+	return _enable_base_point_increase

@@ -28,7 +28,7 @@ corner_radius_bottom_left = 10
 
 [node name="ShopUI" type="Control"]
 process_mode = 2
-z_index = 3
+z_index = 6
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
