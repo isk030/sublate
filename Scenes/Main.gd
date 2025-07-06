@@ -179,6 +179,15 @@ func _on_shop_buff_selected(buff_type: String) -> void:
 				Card.enable_buff_animations = true
 				print("Card buff animations enabled for base point increase!")
 	
+	# Prepare for next run - increment run counter and double target score
+	if ScoreManager:
+		var current_run = ScoreManager._current_run
+		if current_run < 3:  # Nur bis zum dritten Run verdoppeln
+			ScoreManager.prepare_next_run()
+			print("Prepared for run %d with target score %.0f" % [ScoreManager._current_run, ScoreManager._max_score_target])
+		else:
+			print("Maximum number of runs reached (3) - not increasing target score further")
+	
 	# Reset the game for a new run
 	if GameManager:
 		GameManager.reset_game()

@@ -21,6 +21,8 @@ var _game_won_message_label: Label = null
 # Fortschrittsanzeige
 @onready var _score_progress_bar: ProgressBar = null
 var _max_score_target: float = 2800.0  # Maximale Punktzahl für die Fortschrittsleiste
+var _base_score_target: float = 2800.0  # Basis-Punktzahl (wird pro Run verdoppelt)
+var _current_run: int = 1  # Aktueller Spiel-Run (1, 2, 3, ...)
 
 # Spielzustand
 var _current_score: int = 0
@@ -31,6 +33,7 @@ var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
 
 # Signals
 signal score_threshold_reached()
+signal run_completed(run_number: int, target_reached: bool)
 
 # Bonus-Einstellungen (können über ShopUI aktiviert werden)
 var _enable_heat_bonus: bool = false
@@ -189,8 +192,8 @@ func reset_game() -> void:
 	_pairs_found = 0
 	_current_streak = 0
 	_streak_multiplier = 1
-	_threshold_reached = false  # Shop-Schwellenwert zurücksetzen
 	_last_round_points = 0
+	_threshold_reached = false
 	
 	# UI zurücksetzen
 	if _factor_two_label:
@@ -198,8 +201,30 @@ func reset_game() -> void:
 	reset_score_panel()
 	print("==== reset_game DONE ====")
 	reset_score_progress_bar()
-		
-	print("ScoreManager: Spiel zurückgesetzt - Score: 0")
+	
+	print("ScoreManager: Spiel zurückgesetzt - Run: %d - Target Score: %.0f" % [_current_run, _max_score_target])
+
+# Erhöht den Run-Zähler und verdoppelt die Zielpunktzahl
+func increment_run() -> void:
+	_current_run += 1
+	_max_score_target = _base_score_target * pow(2, _current_run - 1)
+	print("ScoreManager: Run erhöht auf %d, neue Zielpunktzahl: %.0f" % [_current_run, _max_score_target])
+
+# Setzt das Spiel für einen neuen Run zurück
+func prepare_next_run() -> void:
+	# Punktestände zurücksetzen, aber Run-Zähler und Zielpunkte erhöhen
+	increment_run()
+	_current_score = 0
+	_pairs_found = 0
+	_current_streak = 0
+	_streak_multiplier = 1
+	_last_round_points = 0
+	_threshold_reached = false
+	
+	# UI zurücksetzen
+	reset_score_panel()
+	reset_score_progress_bar()
+	print("ScoreManager: Nächster Run vorbereitet - Run: %d - Zielpunktzahl: %.0f" % [_current_run, _max_score_target])
 
 func _update_ui() -> void:
 	print("\n==== _update_ui CALLED ====")
@@ -207,9 +232,13 @@ func _update_ui() -> void:
 	print("Progress bar reference: ", _score_progress_bar)
 	
 	# Check if score reached the threshold and we haven't shown the shop yet
-	if _current_score >= _max_score_target and not _threshold_reached:
-		_threshold_reached = true
-		emit_signal("score_threshold_reached")
+	if _score_progress_bar and not _threshold_reached:
+		if _current_score >= _max_score_target:
+			_threshold_reached = true
+			print("Score threshold reached: ", _current_score, " >= ", _max_score_target)
+			# Emit signal with the current run number
+			emit_signal("score_threshold_reached")
+			emit_signal("run_completed", _current_run, true)
 		print("Score threshold reached! Showing shop UI...")
 	
 	if _score_progress_bar:
