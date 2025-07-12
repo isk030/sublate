@@ -36,22 +36,16 @@ func _ready() -> void:
 	# Initialize random number generator
 	randomize()
 	
-	# Create and add CardRhythmManager if it doesn't exist
+	# Look up the singleton CardRhythmManager (should be provided via autoload or scene)
 	card_rhythm_manager = get_node_or_null("/root/CardRhythmManager")
-	if not card_rhythm_manager:
-		print("Creating new CardRhythmManager...")
-		card_rhythm_manager = CardRhythmManager.new()
-		card_rhythm_manager.name = "CardRhythmManager"
-		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
-		# Use call_deferred to add the child safely
-		get_node("/root").call_deferred("add_child", card_rhythm_manager)
-		print("Created and added CardRhythmManager to scene tree")
-		
-		# Print the full path after the node is added
-		call_deferred("_print_rhythm_manager_path")
+	if card_rhythm_manager:
+		print("Found existing CardRhythmManager (singleton)")
+		card_rhythm_manager.debug_mode = true
+		# Ensure it's in the RhythmManager group for others to find
+		if not card_rhythm_manager.is_in_group("RhythmManager"):
+			card_rhythm_manager.add_to_group("RhythmManager")
 	else:
-		print("Found existing CardRhythmManager")
-		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
+		printerr("GameManager: CardRhythmManager singleton not found! Please add it as Autoload or child of root.")
 
 # Helper function to print the path after the node is added
 func _print_rhythm_manager_path() -> void:

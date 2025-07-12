@@ -32,6 +32,12 @@ var _streak_multiplier: int = 1
 var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
 var _last_pair_in_rhythm: bool = false  # Merkt, ob letztes Paar im Rhythmus war
 
+# Heat progress tracking
+var _heat_card_count: int = 0  # Anzahl Karten dieses Paares, die on-beat geöffnet wurden
+var _heat_progress_bar: ProgressBar = null
+var _heat_label: Label = null
+const HEAT_TARGET_CARDS: int = 2
+
 # Signals
 signal score_threshold_reached()
 signal run_completed(run_number: int, target_reached: bool)
@@ -117,6 +123,11 @@ func _ready() -> void:
 	EventManager.connect_to_event("pair_found", Callable(self, &"_on_pair_found"))
 	EventManager.connect_to_event("mismatch_attempt", Callable(self, &"_on_mismatch_attempt"))
 	EventManager.connect_to_event("all_pairs_found", Callable(self, &"_on_all_pairs_found"))
+	# Verbindung zum CardRhythmManager, um on-beat-Flips zu verfolgen
+	_connect_card_rhythm_manager()
+	# Falls beim ersten Versuch noch nicht vorhanden, im nächsten Frame erneut versuchen
+	call_deferred("_connect_card_rhythm_manager")
+	get_tree().node_added.connect(self._on_node_added)
 
 func setup_ui_references(panel: Control) -> void:
 	print("ScoreManager: Connecting UI references...")
@@ -136,6 +147,14 @@ func setup_ui_references(panel: Control) -> void:
 			_score_progress_bar.max_value = _max_score_target
 			_score_progress_bar.value = 0
 			print("ScoreManager: Progress bar connected successfully")
+			# Heat-ProgressBar und Label finden
+			_heat_progress_bar = score_bar.get_node_or_null("%HeatProgressBar")
+			if _heat_progress_bar:
+				_heat_progress_bar.max_value = HEAT_TARGET_CARDS
+				_heat_progress_bar.value = 0
+				_heat_label = _heat_progress_bar.get_node_or_null("%HeatLabel")
+				if _heat_label:
+					_heat_label.visible = false
 		else:
 			push_error("ScoreManager: Failed to find progress bar")
 	
@@ -200,6 +219,7 @@ func reset_game() -> void:
 	if _factor_two_label:
 		_factor_two_label.text = "0"  # Auf 0 zurücksetzen
 	reset_score_panel()
+	_reset_heat_progress()
 	print("==== reset_game DONE ====")
 	reset_score_progress_bar()
 	
@@ -225,6 +245,7 @@ func prepare_next_run() -> void:
 	# UI zurücksetzen
 	reset_score_panel()
 	reset_score_progress_bar()
+	_reset_heat_progress()
 	print("ScoreManager: Nächster Run vorbereitet - Run: %d - Zielpunktzahl: %.0f" % [_current_run, _max_score_target])
 
 func _update_ui() -> void:
@@ -351,6 +372,8 @@ func _on_pair_found(data: Dictionary) -> void:
 	
 	# Update UI to reflect the changes
 	_update_ui()
+	# Reset heat progress at end of pair (in case only one card was on beat)
+	_reset_heat_progress()
 
 
 
@@ -371,6 +394,8 @@ func _on_mismatch_attempt() -> void:
 	
 	# Update the UI
 	_update_ui()
+	# Reset heat progress on mismatch
+	_reset_heat_progress()
 	
 	# Emit score update event
 	EventManager.emit_signal("score_updated", {
@@ -408,3 +433,126 @@ func is_heat_bonus_enabled() -> bool:
 
 func is_base_point_increase_enabled() -> bool:
 	return _enable_base_point_increase
+
+# ---------------------------------------------------
+# Heat progress helpers
+# ---------------------------------------------------
+
+# Function to set up the heat progress bar and label
+func set_heat_progress_bar(progress_bar: ProgressBar) -> void:
+	print("\n==== set_heat_progress_bar CALLED ====")
+	print("Heat progress bar reference received:", progress_bar)
+	
+	if not progress_bar:
+		push_error("ScoreManager: No heat progress bar provided")
+		return
+		
+	_heat_progress_bar = progress_bar
+	_heat_progress_bar.max_value = HEAT_TARGET_CARDS
+	_heat_progress_bar.value = 0
+	
+	# Find the heat label
+	_heat_label = _heat_progress_bar.get_node_or_null("HeatLabel")
+	if _heat_label:
+		_heat_label.visible = false
+		print("Heat label found and connected")
+	else:
+		push_error("ScoreManager: HeatLabel not found in heat progress bar")
+	
+	print("Heat progress bar initialized with max value:", _heat_progress_bar.max_value)
+	print("==== set_heat_progress_bar DONE ====")
+
+func _reset_heat_progress() -> void:
+	_heat_card_count = 0
+	if _heat_progress_bar:
+		_heat_progress_bar.value = 0
+	if _heat_label:
+		_heat_label.visible = false
+
+func _on_card_flipped_in_rhythm(card) -> void:
+	print("\n==== _on_card_flipped_in_rhythm CALLED ====")
+	print("ScoreManager: Received card_flipped_in_rhythm for card: ", card)
+	print("  Heat bonus enabled: ", _enable_heat_bonus)
+	print("  Current heat card count: ", _heat_card_count, "/", HEAT_TARGET_CARDS)
+	
+	# Nur reagieren, wenn Heat-Bonus aktiviert ist
+	if not _enable_heat_bonus:
+		print("  Heat bonus not enabled, ignoring")
+		return
+		
+	# Nur bis zum Ziel zählen
+	if _heat_card_count >= HEAT_TARGET_CARDS:
+		print("  Already reached target count, ignoring")
+		return
+		
+	# Karten-Zähler erhöhen
+	_heat_card_count += 1
+	print("  Heat card count incremented to ", _heat_card_count)
+	
+	# Wenn wir keine Referenz zum Fortschrittsbalken haben, versuchen wir diese direkt zu finden
+	if not _heat_progress_bar:
+		print("  Attempting to find HeatProgressBar directly...")
+		_heat_progress_bar = get_tree().get_root().find_child("HeatProgressBar", true, false)
+		if _heat_progress_bar:
+			_heat_label = _heat_progress_bar.get_node_or_null("HeatLabel")
+			print("  Found HeatProgressBar and HeatLabel directly")
+	
+	# Fortschrittsbalken aktualisieren
+	if _heat_progress_bar:
+		# Sicherstellen, dass der Maximalwert korrekt gesetzt ist
+		_heat_progress_bar.max_value = HEAT_TARGET_CARDS
+		# Wert direkt setzen
+		_heat_progress_bar.value = _heat_card_count
+		print("  Heat progress bar value set to ", _heat_progress_bar.value, " / ", _heat_progress_bar.max_value)
+	else:
+		printerr("  ERROR: Could not find _heat_progress_bar!")
+	
+	# Bei voller Leiste "HEAT!" anzeigen und danach zurücksetzen
+	if _heat_card_count == HEAT_TARGET_CARDS:
+		print("  Target reached! Showing HEAT text")
+		_show_heat_text()
+	
+	print("==== _on_card_flipped_in_rhythm DONE ====")
+
+func _show_heat_text() -> void:
+	if _heat_label:
+		_heat_label.text = "HEAT!"
+		_heat_label.visible = true
+	# Kurze Verzögerung, dann zurücksetzen
+	await get_tree().create_timer(0.6).timeout
+	if _heat_label:
+		_heat_label.visible = false
+	_reset_heat_progress()
+
+# Attempt to connect to ANY node that exposes the `card_flipped_in_rhythm` signal.
+# This avoids brittleness if the node is renamed (e.g. Godot appends "2" when duplicates exist).
+func _try_connect_to_rhythm_manager(node: Node) -> void:
+	if not node:
+		return
+	if not node.has_signal("card_flipped_in_rhythm"):
+		return
+	var cb := Callable(self, "_on_card_flipped_in_rhythm")
+	if node.card_flipped_in_rhythm.is_connected(cb):
+		return
+	node.card_flipped_in_rhythm.connect(cb)
+	print("ScoreManager: Heat progress connected to %s" % node.name)
+
+func _connect_card_rhythm_manager() -> void:
+	print("ScoreManager: Attempting to connect to CardRhythmManager…")
+	# First, try by explicit name (legacy behaviour)
+	var crm = get_tree().get_root().find_child("CardRhythmManager", true, false)
+	print("  CardRhythmManager found by name? ", crm != null)
+	if crm:
+		_try_connect_to_rhythm_manager(crm)
+
+	# If not found by name, fall back to group search (added in CardRhythmManager script)
+	if not crm:
+		var group_nodes := get_tree().get_nodes_in_group("RhythmManager")
+		print("  RhythmManager group nodes count: ", group_nodes.size())
+		for n in group_nodes:
+			_try_connect_to_rhythm_manager(n)
+
+func _on_node_added(node: Node) -> void:
+	# Godot may append numbers if multiple nodes with same name exist; rely on signal presence instead
+	print("ScoreManager: node_added -> ", node.name)
+	_try_connect_to_rhythm_manager(node)
