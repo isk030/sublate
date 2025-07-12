@@ -426,6 +426,10 @@ func set_heat_bonus_enabled(enabled: bool) -> void:
 func set_base_point_increase_enabled(enabled: bool) -> void:
 	_enable_base_point_increase = enabled
 	print("Base point increase ", "enabled" if enabled else "disabled")
+	
+	# When basepoints+ is activated, animate all floating labels to the Factor-Two-Label
+	if enabled:
+		_animate_labels_to_factor_two()
 
 # Getter-Methoden für den Buff-Status
 func is_heat_bonus_enabled() -> bool:
@@ -433,6 +437,56 @@ func is_heat_bonus_enabled() -> bool:
 
 func is_base_point_increase_enabled() -> bool:
 	return _enable_base_point_increase
+
+# ---------------------------------------------------
+# Animation and visual effects
+# ---------------------------------------------------
+
+# Animates all floating labels to fly toward the Factor-Two-Label
+func _animate_labels_to_factor_two() -> void:
+	# Make sure we have the Factor-Two-Label reference
+	if not _factor_two_label or not is_instance_valid(_factor_two_label):
+		push_error("ScoreManager: Can't animate labels - Factor-Two-Label not found")
+		return
+	
+	# Debug the Factor-Two-Label properties
+	print("ScoreManager: Factor-Two-Label found at global_position: ", _factor_two_label.global_position)
+	print("ScoreManager: Factor-Two-Label size: ", _factor_two_label.size)
+	
+	# Get the global position of the Factor-Two-Label (center)
+	var factor_two_position = _factor_two_label.global_position + _factor_two_label.size / 2.0
+	print("ScoreManager: Calculated center position: ", factor_two_position)
+	
+	# Get the FloatingLabel class (using a differently named variable to avoid shadowing)
+	var FloatingLabelScript = load("res://Globals/FloatingLabel.gd")
+	if not FloatingLabelScript:
+		push_error("ScoreManager: Can't animate labels - FloatingLabel script not found")
+		return
+	
+	# First get count of active labels before animation
+	var active_count = FloatingLabelScript.active_labels.size() if "active_labels" in FloatingLabelScript else 0
+	print("ScoreManager: Number of active floating labels: ", active_count)
+	
+	# Ensure we have labels to animate
+	if active_count == 0:
+		print("ScoreManager: No active floating labels to animate")
+		# Still flash the Factor-Two-Label for feedback
+		var empty_tween = create_tween()
+		empty_tween.tween_property(_factor_two_label, "modulate", Color(1.5, 1.5, 0.5, 1), 0.2)
+		empty_tween.tween_property(_factor_two_label, "modulate", _factor_two_label.modulate, 0.3)
+		return
+	
+	# Call the static method to animate all active labels
+	print("ScoreManager: Calling animate_all_to_factor_two with position: ", factor_two_position)
+	FloatingLabelScript.animate_all_to_factor_two(factor_two_position)
+	
+	# Visual feedback - make the Factor-Two-Label flash
+	var original_color = _factor_two_label.modulate
+	var tween = create_tween()
+	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(_factor_two_label, "modulate", Color(1.5, 1.5, 0.5, 1), 0.2)
+	tween.tween_property(_factor_two_label, "modulate", original_color, 0.3)
+	print("ScoreManager: Animating all floating labels to Factor-Two-Label")
 
 # ---------------------------------------------------
 # Heat progress helpers
