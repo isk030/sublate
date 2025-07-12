@@ -25,6 +25,15 @@ func _ready() -> void:
 	# Apply initial visual state
 	modulate = start_color
 	
+	# Heat bonus label special debug
+	if text == "+100":
+		print("!!!!! HEAT BONUS LABEL CREATED !!!!")
+		print("Heat bonus label properties:")
+		print("  - Text: '", text, "'")
+		print("  - Position: ", global_position)
+		print("  - Color: ", modulate)
+		print("  - Scale: ", scale)
+	
 	# Add this label to the active labels list
 	active_labels.append(self)
 	print("FloatingLabel added to active_labels. Count: ", active_labels.size())
@@ -32,6 +41,8 @@ func _ready() -> void:
 	# Remove from active labels when freed
 	tree_exited.connect(func(): 
 		active_labels.erase(self)
+		if text == "+100":
+			print("!!!!! HEAT BONUS LABEL REMOVED !!!!!")
 		print("FloatingLabel removed from active_labels. Count: ", active_labels.size())
 	)
 	
@@ -152,12 +163,63 @@ func animate_to_factor_two(target_position: Vector2) -> void:
 	current_tween.parallel().tween_property(self, "modulate", Color(1.0, 0.9, 0.2, 1.0), 0.2)
 	
 	# Then move toward the target position with arc effect (first up, then toward target)
-	var mid_point = position + Vector2(local_movement.x * 0.4, -abs(local_movement.y) * 1.2)  # Arc upward
-	current_tween.tween_property(self, "position", mid_point, 0.3)
-	current_tween.tween_property(self, "position", local_target, 0.4)
+	if text == "+100":  # Heat-Bonus - direktere Bewegung zum Factor-Two-Label
+		var mid_point = position + Vector2(local_movement.x * 0.5, local_movement.y * 0.3)  # Direkterer Pfad
+		var pre_target = local_target - Vector2(0, 15)  # Leicht oberhalb des Ziels
+		current_tween.tween_property(self, "position", mid_point, 0.3)
+		current_tween.tween_property(self, "position", pre_target, 0.3)  # Erst knapp über das Ziel
+		current_tween.tween_property(self, "position", local_target, 0.2)  # Dann zum exakten Ziel
+	else:  # Normale Labels - Standard Arc-Animation
+		var mid_point = position + Vector2(local_movement.x * 0.4, -abs(local_movement.y) * 1.2)  # Arc upward
+		current_tween.tween_property(self, "position", mid_point, 0.3)
+		current_tween.tween_property(self, "position", local_target, 0.4)
 	
-	# Finally fade out
-	current_tween.tween_property(self, "modulate:a", 0.0, 0.3)
+	# Special handling for Heat Bonus Label - critical fix for visibility
+	if text == "+100":  
+		print("FloatingLabel: Beginning HEAT BONUS +100 animation sequence with extended visibility")
+		
+		# PROBLEM FIX: Stelle sicher, dass das Label beim Erreichen des Ziels voll sichtbar ist
+		current_tween.tween_property(self, "modulate:a", 1.0, 0.1)  # Volle Sichtbarkeit erzwingen
+		
+		# Step 1: Für 3 Sekunden komplett statisch und voll sichtbar am Ziel bleiben
+		print("FloatingLabel: HEAT BONUS now at target, staying fully visible for 3 seconds")
+		current_tween.tween_interval(3.0)  # 3 Sekunden absolute Sichtbarkeit erzwingen
+		
+		# Step 2: Minimale Transparenz für weitere 4 Sekunden
+		print("FloatingLabel: HEAT BONUS phase 2 - minimal transparency for 4 seconds")
+		current_tween.tween_property(self, "modulate:a", 0.98, 2.0)
+		current_tween.tween_property(self, "modulate:a", 0.95, 2.0)
+		
+		# Step 3: Leichte Transparenz für weitere 4 Sekunden
+		print("FloatingLabel: HEAT BONUS phase 3 - slight transparency for 4 seconds")
+		current_tween.tween_property(self, "modulate:a", 0.9, 2.0)
+		current_tween.tween_property(self, "modulate:a", 0.8, 2.0)
+		
+		# Step 4: Mittlere Transparenz für 3 weitere Sekunden
+		print("FloatingLabel: HEAT BONUS phase 4 - medium transparency for 3 seconds")
+		current_tween.tween_property(self, "modulate:a", 0.6, 1.5)
+		current_tween.tween_property(self, "modulate:a", 0.4, 1.5)
+		
+		# Step 5: Langsames vollständiges Ausblenden über 3 Sekunden
+		print("FloatingLabel: HEAT BONUS phase 5 - final fade out over 3 seconds")
+		current_tween.tween_property(self, "modulate:a", 0.0, 3.0)
+		
+		# Add callback to track progress
+		current_tween.connect("step_finished", func(step_idx): print("FloatingLabel: HEAT BONUS animation step ", step_idx, " completed"))
+		print("FloatingLabel: HEAT BONUS animation sequence set up - total duration ~17 seconds")
+		
+		# Sicherheits-Timer, der nach 5 Sekunden prüft, ob das Label noch sichtbar ist
+		var timer = get_tree().create_timer(5.0)
+		timer.timeout.connect(func():
+			if is_instance_valid(self):
+				print("FloatingLabel: HEAT BONUS visibility check after 5s - alpha: ", modulate.a, " position: ", global_position)
+				if modulate.a < 0.9:
+					print("FloatingLabel: WARNING - HEAT BONUS faded too quickly! Resetting alpha to 1.0")
+					modulate.a = 1.0  # Sichtbarkeit wiederherstellen
+		)
+	else:  
+		# Standard ausblenden für normale Labels
+		current_tween.tween_property(self, "modulate:a", 0.0, 0.3)
 	
 	# Delete after animation is complete
 	current_tween.connect("finished", Callable(self, "queue_free"))

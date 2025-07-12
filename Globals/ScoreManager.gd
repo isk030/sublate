@@ -347,6 +347,14 @@ func _on_pair_found(data: Dictionary) -> void:
 
 	# Apply heat bonus if enabled and in rhythm
 	var rhythm_bonus = 100 if (_enable_heat_bonus and was_in_rhythm) else 0
+	
+	# If heat bonus was applied, animate a label toward the Factor-Two-Label
+	if rhythm_bonus > 0:
+		print("ScoreManager: Heat bonus detected! Creating +100 label animation")
+		# Kurze Verzögerung, um sicherzustellen, dass alles fertig ist
+		await get_tree().create_timer(0.1).timeout
+		_animate_heat_bonus_to_factor_two()
+		print("ScoreManager: Heat bonus label animation triggered")
 
 	# Calculate points with streak multiplier
 	if _pairs_found == 1:
@@ -487,6 +495,78 @@ func _animate_labels_to_factor_two() -> void:
 	tween.tween_property(_factor_two_label, "modulate", Color(1.5, 1.5, 0.5, 1), 0.2)
 	tween.tween_property(_factor_two_label, "modulate", original_color, 0.3)
 	print("ScoreManager: Animating all floating labels to Factor-Two-Label")
+
+
+# Creates and animates a heat bonus label (+100) toward the Factor-Two-Label
+# KOMPLETT NEUE IMPLEMENTATION - Direkte Animation ohne FloatingLabel-Klasse
+func _animate_heat_bonus_to_factor_two() -> void:
+	print("ScoreManager: NEUE IMPLEMENTATION - Heat Bonus Animation")
+	
+	# Sicherstellen, dass wir Factor-Two-Label haben
+	if not _factor_two_label or not is_instance_valid(_factor_two_label):
+		push_error("ScoreManager: Can't animate heat bonus - Factor-Two-Label not found")
+		return
+	
+	# Get target position (Factor-Two-Label center)
+	var target_position = _factor_two_label.global_position + _factor_two_label.size / 2.0
+	print("ScoreManager: Factor-Two-Label target position: ", target_position)
+	
+	# Direkt ein Label erstellen (KEIN FloatingLabel)
+	var heat_bonus_label = Label.new()
+	heat_bonus_label.text = "+100"
+	heat_bonus_label.name = "HeatBonusLabel"
+	print("ScoreManager: Created heat bonus label with passive buff style")
+	
+	# Styling wie bei passiven Buffs (Color.GOLD und einfachere Darstellung)
+	heat_bonus_label.add_theme_font_size_override("font_size", 28)  # Wie bei passivem Buff
+	heat_bonus_label.add_theme_color_override("font_color", Color.GOLD)  # Gold wie bei passivem Buff
+	heat_bonus_label.add_theme_constant_override("outline_size", 2)  # Wie bei passivem Buff
+	heat_bonus_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	
+	# Bei CanvasLayer hinzufügen - Direkt zum root
+	get_tree().root.add_child(heat_bonus_label)
+	
+	# Genau bei 5% der Höhe und 85% der Breite starten (weiter oben als zuvor)
+	var viewport_size = get_viewport().get_visible_rect().size
+	heat_bonus_label.global_position = Vector2(viewport_size.x * 0.85, viewport_size.y * 0.05)
+	print("ScoreManager: Heat bonus label position: ", heat_bonus_label.global_position)
+	
+	# Animation wie bei passiven Buff-Labels
+	var tween = create_tween()
+	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	
+	# 1. Kurz anzeigen und auf genau 1,4 skalieren (vom Benutzer gewünscht)
+	tween.tween_property(heat_bonus_label, "scale", Vector2(1.4, 1.4), 0.3)
+	
+	# 2. Zum Ziel bewegen
+	tween.tween_property(heat_bonus_label, "global_position", target_position, 0.5)
+	
+	# 3. Am Ziel kurz warten
+	tween.tween_interval(0.5)
+	
+	# 4. Einfaches Ausblenden (wie bei passive buff)
+	tween.tween_property(heat_bonus_label, "modulate:a", 0.0, 1.5)  # Gesamtdauer ~3 Sekunden
+	
+	# Nach der Animation Label entfernen
+	tween.connect("finished", func(): 
+		print("ScoreManager: Heat bonus label animation completed")
+		heat_bonus_label.queue_free()
+	)
+	
+	# Dezentes Aufleuchten des Factor-Two-Labels (wie bei passivem Buff)
+	var original_color = _factor_two_label.modulate
+	var factor_tween = create_tween()
+	factor_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	factor_tween.tween_property(_factor_two_label, "modulate", Color(1.2, 1.2, 0.7, 1), 0.2)  # Leichteres Gold-Highlight
+	factor_tween.tween_property(_factor_two_label, "modulate", original_color, 0.3)
+	print("ScoreManager: Heat bonus animation started - im passive buff Stil (~3s Gesamtdauer)")
+	
+	# Ein Timer reicht für die kürzere Animation
+	var check_timer = get_tree().create_timer(2.0)
+	check_timer.timeout.connect(func(): 
+		if is_instance_valid(heat_bonus_label):
+			print("ScoreManager: Heat label check after 2s - alpha: ", heat_bonus_label.modulate.a)
+	)
 
 # ---------------------------------------------------
 # Heat progress helpers
