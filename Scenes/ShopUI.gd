@@ -6,8 +6,21 @@ signal buff_selected(buff_type: String)
 @onready var _heat_buff_container = $VBoxContainer/HBoxContainer/ColorRect
 @onready var _base_points_buff_container = $VBoxContainer/HBoxContainer/ColorRect2
 
+# TextureRect-Referenzen
+@onready var _heat_buff_texture = $VBoxContainer/HBoxContainer/ColorRect/VBoxContainer2/TextureRect
+@onready var _base_points_buff_texture = $VBoxContainer/HBoxContainer/ColorRect2/VBoxContainer3/TextureRect
+
 func _ready() -> void:
 	visible = false  # Initially hidden
+	
+	# Verbinde die TextureRects mit Klick-Signalen
+	if _heat_buff_texture:
+		_heat_buff_texture.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_heat_buff_texture.gui_input.connect(_on_heat_buff_texture_gui_input)
+		
+	if _base_points_buff_texture:
+		_base_points_buff_texture.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		_base_points_buff_texture.gui_input.connect(_on_base_points_buff_texture_gui_input)
 
 func show_shop() -> void:
 	visible = true
@@ -37,6 +50,16 @@ func _on_base_points_buff_pressed() -> void:
 	_award_inventory_items()
 	emit_signal("buff_selected", "base_point_increase")
 	visible = false
+
+# Event-Handler für Klicks auf die Heat-Buff-Textur
+func _on_heat_buff_texture_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_on_heat_buff_pressed()
+
+# Event-Handler für Klicks auf die Base-Points-Buff-Textur
+func _on_base_points_buff_texture_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_on_base_points_buff_pressed()
 
 # Funktion zur Vergabe von Inventar-Items beim ersten Spielabschluss
 func _award_inventory_items() -> void:
