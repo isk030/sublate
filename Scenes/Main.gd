@@ -472,15 +472,12 @@ func _on_all_pairs_found() -> void:
 	
 	# Show the ShopUI with only EXIT button and score
 	if _shop_ui and _shop_ui.has_method("show_game_over_screen"):
-		# Get the current score from the ScoreManager
+		# Get the current score directly from the ScoreManager's internal variable
 		var final_score = 0
-		if ScoreManager:
-			# Access the score from the _total_score_label if available
-			if ScoreManager._total_score_label and ScoreManager._total_score_label.text:
-				final_score = int(ScoreManager._total_score_label.text)
-			# If not available through the label, try to access the internal _current_score variable
-			elif "_current_score" in ScoreManager:
-				final_score = ScoreManager._current_score
+		if ScoreManager and "_current_score" in ScoreManager:
+			# Immer direkt den internen _current_score verwenden, nicht den Label-Text
+			final_score = ScoreManager._current_score
+			print("Getting final score directly from ScoreManager._current_score: ", final_score)
 			
 		print("Final score for game over screen: ", final_score)
 		_shop_ui.show_game_over_screen(final_score)
