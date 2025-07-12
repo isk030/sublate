@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://dr6f1qij1a0en" path="res://Scenes/ShopUI.gd" id="1_cf8d9"]
 [ext_resource type="Texture2D" uid="uid://cy7y0q7bpw6js" path="res://assets/images/ChatGPT Bild 12 Juli 2025 (1).png" id="2_a7r41"]
-[ext_resource type="Texture2D" uid="uid://c15ad2lhxaxpk" path="res://assets/images/ChatGPT Bild 12 Juli 2025 (2).png" id="3_v6quj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_ButtonHover"]
 bg_color = Color(0.3, 0.3, 0.3, 0.9)
@@ -27,6 +26,9 @@ corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_o75od"]
+load_path = "res://.godot/imported/ChatGPT Bild 12 Juli 2025 (2).png-996ff9a94cb92d59ee4afa2dc354157a.ctex"
 
 [node name="ShopUI" type="Control"]
 process_mode = 2
@@ -150,7 +152,7 @@ theme_override_constants/separation = 20
 [node name="TextureRect" type="TextureRect" parent="VBoxContainer/HBoxContainer/ColorRect2/VBoxContainer3"]
 custom_minimum_size = Vector2(200, 300)
 layout_mode = 2
-texture = ExtResource("3_v6quj")
+texture = SubResource("CompressedTexture2D_o75od")
 expand_mode = 1
 
 [node name="Button2" type="Button" parent="VBoxContainer/HBoxContainer/ColorRect2/VBoxContainer3"]

@@ -11,6 +11,13 @@ extends Control
 @onready var _shop_ui: Control = $ShopUI
 @onready var _inventory_panel: Control = $BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/InventoryPanel
 
+# Musik-System - verwende eine globale Variable für den Player, um mehrere Instanzen zu vermeiden
+var _music_player: AudioStreamPlayer = null
+var _available_music = []
+var _last_played_music = ""
+var _is_music_initialized = false
+const GEWINN_MUSIC_PATH = "res://assets/music/Gewinn.mp3"
+
 func _ready() -> void:
 	# Stelle sicher, dass der Node Eingaben empfängt
 	print("Main scene ready")
@@ -21,6 +28,9 @@ func _ready() -> void:
 	_connect_menu_signals()
 	# Aktiviere die Verarbeitung von Eingaben
 	set_process_input(true)
+	
+	# Initialisiere das Musik-System
+	_initialize_music_system()
 
 func _validate_nodes() -> void:
 	var missing_nodes: Array[String] = []
@@ -50,6 +60,136 @@ func _initialize_managers() -> void:
 	_initialize_game_manager()
 	_initialize_inventory_panel()
 	_connect_score_signals()
+
+# Initialisiert das Musik-System und lädt alle verfügbaren Musikdateien
+func _initialize_music_system() -> void:
+	print("Initialisiere Musik-System...")
+	
+	# Verhindere mehrfache Initialisierung
+	if _is_music_initialized:
+		print("Musik-System bereits initialisiert!")
+		return
+	
+	# Entferne eventuell vorhandene alte Player
+	_cleanup_music_player()
+	
+	# Erstelle einen neuen Player
+	_music_player = AudioStreamPlayer.new()
+	
+	# Füge den AudioStreamPlayer zur Szene hinzu
+	add_child(_music_player)
+	
+	# Konfiguriere den Player
+	_music_player.name = "MainMusicPlayer"
+	_music_player.bus = "Master"
+	_music_player.volume_db = -10  # Hintergrundmusik etwas leiser
+	
+	# Verbinde das finished-Signal
+	_music_player.finished.connect(_on_music_finished)
+	
+	# Lade alle verfügbaren Musikdateien
+	_load_available_music()
+	_is_music_initialized = true
+	
+	# Warte einen kurzen Moment und starte dann die Musik
+	# Dies verhindert Konflikte mit anderen Audioquellen beim Start
+	await get_tree().create_timer(0.5).timeout
+	_play_random_music()
+
+# Lädt alle verfügbaren Musikdateien aus dem assets/music Ordner
+func _load_available_music() -> void:
+	_available_music.clear()
+	
+	# Füge die bekannten Musikdateien hinzu
+	_available_music.append("res://assets/music/Heartbeat AI Music.mp3")
+	_available_music.append("res://assets/music/Schigisaga - AI Music.mp3")
+	_available_music.append("res://assets/music/Sneek Up by Cruizer61.mp3")
+	_available_music.append("res://assets/music/Suno AI Music Gut.mp3")
+	_available_music.append("res://assets/music/Suno AI Music.mp3")
+	
+	print("Verfügbare Musik: ", _available_music.size(), " Tracks")
+
+# Stellt sicher, dass keine anderen Musik-Player existieren
+func _cleanup_music_player() -> void:
+	# Stoppe und entferne den aktuellen Player
+	if _music_player:
+		if _music_player.playing:
+			_music_player.stop()
+		
+		_music_player.queue_free()
+		_music_player = null
+	
+	# Suche nach vorhandenen AudioStreamPlayers in der Szene, die unseren Namen haben
+	var existing_players = find_children("MainMusicPlayer", "AudioStreamPlayer")
+	for player in existing_players:
+		print("Entferne vorhandenen AudioStreamPlayer: ", player.name)
+		if player.playing:
+			player.stop()
+		player.queue_free()
+
+# Spielt eine zufällig ausgewählte Musik ab (außer Gewinn.mp3 und zuletzt gespielte)
+func _play_random_music() -> void:
+	# Stelle sicher, dass das Musik-System initialisiert ist
+	if not _is_music_initialized:
+		print("Musik-System nicht initialisiert, initialisiere jetzt...")
+		_initialize_music_system()
+		return
+	
+	# Stoppe zuerst die aktuelle Musik, falls sie noch spielt
+	if _music_player and _music_player.playing:
+		_music_player.stop()
+		_music_player.stream = null
+		
+	if _available_music.is_empty():
+		print("Keine Musikdateien verfügbar!")
+		return
+	
+	# Erstelle eine Kopie der verfügbaren Musik für die Auswahl
+	var selection_pool = _available_music.duplicate()
+	
+	# Entferne die Gewinn-Musik, wenn sie vorhanden ist
+	var gewinn_index = selection_pool.find(GEWINN_MUSIC_PATH)
+	if gewinn_index != -1:
+		selection_pool.remove_at(gewinn_index)
+	
+	# Entferne die zuletzt gespielte Musik, wenn es eine gibt
+	if _last_played_music != "":
+		var last_index = selection_pool.find(_last_played_music)
+		if last_index != -1:
+			selection_pool.remove_at(last_index)
+	
+	# Wenn nach dem Entfernen keine Musik mehr übrig ist
+	if selection_pool.is_empty():
+		print("Keine weitere Musik zur Auswahl verfügbar, nehme aus allen")
+		# Nimm einfach eine beliebige außer Gewinn
+		selection_pool = _available_music.duplicate()
+		gewinn_index = selection_pool.find(GEWINN_MUSIC_PATH)
+		if gewinn_index != -1:
+			selection_pool.remove_at(gewinn_index)
+	
+	# Wähle zufällig eine Musik aus
+	var random_index = randi() % selection_pool.size()
+	var selected_music = selection_pool[random_index]
+	
+	# Speichere als zuletzt gespielt
+	_last_played_music = selected_music
+	
+	# Lade und spiele die ausgewählte Musik
+	print("Spiele Musik: ", selected_music)
+	_music_player.stream = load(selected_music)
+	_music_player.play()
+
+# Wird aufgerufen, wenn die aktuelle Musik zu Ende ist
+func _on_music_finished() -> void:
+	print("Musik beendet, wähle neue aus...")
+	_play_random_music()
+
+# Stoppt die aktuell spielende Musik (wird von ShopUI aufgerufen)
+func _pause_music() -> void:
+	if _music_player and _music_player.playing:
+		print("Stoppe Hauptmusik vollständig")
+		_music_player.stop()
+		_music_player.stream = null  # Stelle sicher, dass kein Stream mehr aktiv ist
 
 func _initialize_score_manager() -> void:
 	if not ScoreManager:
@@ -183,6 +323,9 @@ func _on_shop_buff_selected(buff_type: String) -> void:
 	if _inventory_panel and _inventory_panel.has_method("update_buff_displays"):
 		_inventory_panel.update_buff_displays()
 		print("Updated buff displays in inventory panel")
+	
+	# Spiele eine neue zufällige Musik nach Buff-Auswahl
+	_play_random_music()
 	
 	# Prepare for next run - increment run counter and double target score
 	if ScoreManager:
