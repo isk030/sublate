@@ -30,6 +30,7 @@ var _pairs_found: int = 0
 var _current_streak: int = 0
 var _streak_multiplier: int = 1
 var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
+var _last_pair_in_rhythm: bool = false  # Merkt, ob letztes Paar im Rhythmus war
 
 # Signals
 signal score_threshold_reached()
@@ -262,11 +263,10 @@ func _update_ui() -> void:
 			var base_points = 100
 			if _enable_base_point_increase and _pairs_found > 1:
 				base_points += (_pairs_found - 1) * 20
-			
-			# KEINE Heat-Bonus-Anzeige im UI-Update - der Heat-Bonus wird nur 
-			# in _on_pair_found() angewendet, wenn die Karte wirklich im Rhythmus geflippt wurde
-			
-			# Update factor two label (nur base points ohne heat bonus in der Anzeige)
+			# Add heat bonus if enabled and last pair was in rhythm
+			if _enable_heat_bonus and _last_pair_in_rhythm:
+				base_points += 100
+			# Update factor two label
 			_factor_two_label.text = str(base_points)
 	
 	# Update progress bar if available
@@ -313,6 +313,7 @@ func _on_pair_found(data: Dictionary) -> void:
 	var was_in_rhythm = data.get("heat_bonus", 0) > 0
 	
 	# Update pairs found counter
+	_last_pair_in_rhythm = was_in_rhythm  # merken für UI
 	_pairs_found = data.get("pairs_found", _pairs_found + 1)
 	
 	# Increase streak for every match
@@ -359,6 +360,7 @@ func _on_mismatch_attempt() -> void:
 	_current_streak = 0
 	_streak_multiplier = 1
 	_last_round_points = 0  # No points for this attempt
+	_last_pair_in_rhythm = false
 	
 	# Update UI immediately to show 0 points
 	if _factor_one_label:

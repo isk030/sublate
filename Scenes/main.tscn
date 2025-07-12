@@ -15,7 +15,7 @@
 [ext_resource type="PackedScene" uid="uid://cikf0r1y6117c" path="res://Scenes/menu.tscn" id="15_abcde"]
 [ext_resource type="PackedScene" uid="uid://dnjcp3hs48f82" path="res://Scenes/shop_ui.tscn" id="15_wsu2k"]
 [ext_resource type="Script" uid="uid://cc2r3u4ubvlqp" path="res://Globals/CardRhythmManager.gd" id="16_k12tt"]
-[ext_resource type="PackedScene" path="res://Scenes/inventory_panel.tscn" id="17_yqxm4"]
+[ext_resource type="PackedScene" uid="uid://c5ytlodq8krl8" path="res://Scenes/inventory_panel.tscn" id="17_yqxm4"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
