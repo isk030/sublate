@@ -60,6 +60,11 @@ func _initialize_managers() -> void:
 	_initialize_game_manager()
 	_initialize_inventory_panel()
 	_connect_score_signals()
+	
+	# Connect to the all_pairs_found event
+	if EventManager:
+		EventManager.connect_to_event("all_pairs_found", Callable(self, "_on_all_pairs_found"))
+		print("Connected to all_pairs_found event")
 
 # Initialisiert das Musik-System und lädt alle verfügbaren Musikdateien
 func _initialize_music_system() -> void:
@@ -287,6 +292,15 @@ func _connect_score_signals() -> void:
 	if _shop_ui:
 		if not _shop_ui.buff_selected.is_connected(_on_shop_buff_selected):
 			_shop_ui.buff_selected.connect(_on_shop_buff_selected)
+			
+		# Connect the continue_game and open_menu signals
+		if not _shop_ui.continue_game.is_connected(_on_shop_continue_game):
+			_shop_ui.continue_game.connect(_on_shop_continue_game)
+			print("ShopUI continue_game signal connected")
+			
+		if not _shop_ui.exit_game.is_connected(_on_shop_open_menu):
+			_shop_ui.exit_game.connect(_on_shop_open_menu)
+			print("ShopUI exit_game signal connected")
 
 func _on_score_threshold_reached() -> void:
 	if _shop_ui:
@@ -336,10 +350,10 @@ func _on_shop_buff_selected(buff_type: String) -> void:
 		else:
 			print("Maximum number of runs reached (3) - not increasing target score further")
 	
-	# Reset the game for a new run
+	# Reset the game for a new run, but preserve the buffs that were just activated
 	if GameManager:
-		GameManager.reset_game()
-		print("Game reset for new run after buff selection")
+		GameManager.reset_game(false) # false = don't reset buffs
+		print("Game reset for new run after buff selection (buffs preserved)")
 	
 	# Resume the game
 	if _shop_ui:
@@ -351,11 +365,11 @@ func _on_menu_start_pressed() -> void:
 	
 	# Reset game state and score manager (including buffs)
 	if GameManager:
-		GameManager.reset_game()
+		GameManager.reset_game(true) # true = reset all buffs for a completely new game
 	
 	# Reset score manager to clear all buffs for new run
 	if ScoreManager:
-		ScoreManager.reset_game()
+		ScoreManager.reset_game(true) # true = reset all buffs for a completely new game
 		print("ScoreManager: Reset for new run (including all buffs)")
 		
 	# Inventar zurücksetzen (Stab Scratches etc.)
@@ -389,6 +403,48 @@ func _on_menu_continue_pressed() -> void:
 
 func _on_menu_exit_requested() -> void:
 	get_tree().quit()
+
+# Handler for the continue_game signal from ShopUI
+func _on_shop_continue_game() -> void:
+	print("ShopUI: Continue game signal received")
+	# Hide the ShopUI
+	if _shop_ui:
+		_shop_ui.visible = false
+	
+	# Play random music like when a buff is selected
+	_play_random_music()
+	
+	# Unpause the game and continue
+	get_tree().paused = false
+
+# Handler for the EXIT button signal from ShopUI
+func _on_shop_open_menu() -> void:
+	print("ShopUI: EXIT button pressed, quitting game")
+	# Quit the game
+	get_tree().quit()
+
+# Handler for the all_pairs_found event when all card pairs have been matched
+func _on_all_pairs_found() -> void:
+	print("All pairs found! Game over - showing ShopUI with final score")
+	
+	# Wait a short moment before showing the score screen
+	await get_tree().create_timer(1.0).timeout
+	
+	# Show the ShopUI with only EXIT button and score
+	if _shop_ui and _shop_ui.has_method("show_game_over_screen"):
+		# Get the current score from the ScoreManager
+		var final_score = 0
+		if ScoreManager:
+			# Access the score from the _total_score_label if available
+			if ScoreManager._total_score_label and ScoreManager._total_score_label.text:
+				final_score = int(ScoreManager._total_score_label.text)
+			# If not available through the label, try to access the internal _current_score variable
+			elif "_current_score" in ScoreManager:
+				final_score = ScoreManager._current_score
+			
+		print("Final score for game over screen: ", final_score)
+		_shop_ui.show_game_over_screen(final_score)
+		get_tree().paused = true
 
 # Initialize the inventory panel and connect item signals
 func _initialize_inventory_panel() -> void:

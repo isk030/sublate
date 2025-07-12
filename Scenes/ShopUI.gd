@@ -1,6 +1,8 @@
 extends Control
 
 signal buff_selected(buff_type: String)
+signal continue_game
+signal exit_game
 
 # Button-Referenzen
 @onready var _heat_buff_container = $VBoxContainer/HBoxContainer/ColorRect
@@ -12,6 +14,8 @@ signal buff_selected(buff_type: String)
 
 # Audio-Player für die Gewinn-Musik
 @onready var _music_player = AudioStreamPlayer.new()
+@onready var _continue_button = $VBoxContainer/ButtonsContainer/ContinueButton
+@onready var _menu_button = $VBoxContainer/ButtonsContainer/MenuButton
 const GEWINN_MUSIC = preload("res://assets/music/Gewinn.mp3")
 
 func _ready() -> void:
@@ -25,6 +29,18 @@ func _ready() -> void:
 	if _base_points_buff_texture:
 		_base_points_buff_texture.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		_base_points_buff_texture.gui_input.connect(_on_base_points_buff_texture_gui_input)
+		
+	# Connect buttons
+	if _continue_button:
+		_continue_button.pressed.connect(_on_continue_button_pressed)
+		print("Continue button connected")
+		
+	if _menu_button:
+		_menu_button.pressed.connect(_on_menu_button_pressed)
+		print("Menu button connected")
+	
+	# Buttons initial ausblenden
+	$VBoxContainer/ButtonsContainer.visible = false
 
 func show_shop() -> void:
 	visible = true
@@ -43,21 +59,48 @@ func show_shop() -> void:
 	# Musik abspielen
 	_music_player.play()
 	
-	# Prüfen, welche Buffs bereits aktiviert sind
+	# Debug: Zeige den aktuellen Status der Buff-Flags
+	print("\n==== ShopUI: show_shop ====")
 	if ScoreManager:
-		# Heat Buff Container ausblenden, wenn bereits aktiviert
+		print("Heat Bonus aktiviert: ", ScoreManager.is_heat_bonus_enabled())
+		print("Base Points Bonus aktiviert: ", ScoreManager.is_base_point_increase_enabled())
+	else:
+		print("ScoreManager nicht verfügbar!")
+	
+	# Prüfe und hole den Zustand der Buffs vom ScoreManager
+	if ScoreManager:
+		var heat_enabled = ScoreManager.is_heat_bonus_enabled()
+		var base_points_enabled = ScoreManager.is_base_point_increase_enabled()
+		print("ShopUI: Heat buff enabled: ", heat_enabled)
+		print("ShopUI: Base points buff enabled: ", base_points_enabled)
+		
+		# Aktiviere oder deaktiviere die Buff-Container entsprechend
+		# Wenn ein Buff bereits aktiviert ist, wird er nicht mehr angezeigt
+		print("\nUpdating buff container visibility:")
 		if _heat_buff_container:
-			_heat_buff_container.visible = not ScoreManager.is_heat_bonus_enabled()
-		
-		# Base Points Buff Container ausblenden, wenn bereits aktiviert
+			_heat_buff_container.visible = not heat_enabled
+			print("Heat buff container visible: ", not heat_enabled, 
+				  ", because heat_enabled = ", heat_enabled)
 		if _base_points_buff_container:
-			_base_points_buff_container.visible = not ScoreManager.is_base_point_increase_enabled()
+			_base_points_buff_container.visible = not base_points_enabled
+			print("Base points buff container visible: ", not base_points_enabled, 
+				  ", because base_points_enabled = ", base_points_enabled)
 		
-		# Wenn beide Buffs aktiviert sind, einen Hinweis anzeigen
-		if ScoreManager.is_heat_bonus_enabled() and ScoreManager.is_base_point_increase_enabled():
+		print("\nChecking if both buffs are activated:")
+		# Wenn beide Buffs aktiviert sind, einen Hinweis anzeigen und Buttons anzeigen
+		if heat_enabled and base_points_enabled:
 			$VBoxContainer/Label.text = "All Buffs activated!"
+			# Buttons anzeigen
+			$VBoxContainer/ButtonsContainer.visible = true
+			print("Both buffs are activated (heat=true, base_points=true) - showing continue/menu buttons")
 		else:
 			$VBoxContainer/Label.text = "Well Done! Choose your Buff!"
+			# Buttons ausblenden
+			$VBoxContainer/ButtonsContainer.visible = false
+			print("Not all buffs activated (heat=", heat_enabled, ", base_points=", base_points_enabled, ") - hiding buttons")
+	else:
+		print("ERROR: ScoreManager not found in show_shop!")
+	print("==== ShopUI: show_shop Ende ====")
 
 func _on_heat_buff_pressed() -> void:
 	_award_inventory_items()
@@ -103,6 +146,21 @@ func _setup_music_player() -> void:
 	# Loop aktivieren
 	_music_player.finished.connect(func(): if visible: _music_player.play())
 
+# Handler für den Continue-Button
+func _on_continue_button_pressed() -> void:
+	emit_signal("continue_game")
+	visible = false
+	_music_player.stop()
+	
+	# Die Hauptmusik wird automatisch neu gestartet
+	# (ähnlich wie bei den Buff-Buttons)
+
+# Handler für den EXIT-Button
+func _on_menu_button_pressed() -> void:
+	emit_signal("exit_game")
+	visible = false
+	_music_player.stop()
+
 # Funktion zur Vergabe von Inventar-Items beim ersten Spielabschluss
 func _award_inventory_items() -> void:
 	# Prüfe ob InventoryManager-Singleton verfügbar ist
@@ -126,3 +184,72 @@ func _award_inventory_items() -> void:
 		# Blende die Nachricht nach 3 Sekunden aus
 		await get_tree().create_timer(3.0).timeout
 		notif_label.visible = false
+
+# Zeigt den Game Over Bildschirm mit dem finalen Score
+func show_game_over_screen(final_score: int) -> void:
+	# Zeige die Shop-UI an
+	visible = true
+	
+	# Spiele die Gewinn-Musik ab
+	if not _music_player.get_parent():
+		_setup_music_player()
+		await get_tree().create_timer(0.1).timeout
+	
+	_music_player.play()
+	
+	# Rufe die übergeordnete Szene auf, um die Hauptmusik zu pausieren
+	var parent = get_parent()
+	if parent and parent.has_method("_pause_music"):
+		parent._pause_music()
+	
+	# Verstecke alle Buff-Container
+	if _heat_buff_container:
+		_heat_buff_container.visible = false
+	if _base_points_buff_container:
+		_base_points_buff_container.visible = false
+	
+	# Entferne vorherigen Score-Container, falls vorhanden
+	var old_score = $VBoxContainer.get_node_or_null("ScoreContainer")
+	if old_score:
+		old_score.queue_free()
+	
+	# Erstelle einen Container für die Score-Labels
+	var score_container = VBoxContainer.new()
+	score_container.name = "ScoreContainer"
+	score_container.size_flags_horizontal = Control.SIZE_FILL
+	score_container.size_flags_vertical = Control.SIZE_FILL
+	
+	# Erstelle und zeige ein Label für "Your Score"
+	var score_title = Label.new()
+	score_title.text = "Your Score"
+	score_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_title.add_theme_font_size_override("font_size", 32)
+	score_title.add_theme_color_override("font_color", Color(1, 1, 1))
+	
+	# Erstelle und zeige ein Label für den Punktwert
+	var score_value = Label.new()
+	score_value.text = str(final_score)
+	score_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_value.add_theme_font_size_override("font_size", 48)
+	score_value.add_theme_color_override("font_color", Color(1, 0.9, 0.2))
+	
+	# Füge die Labels zum Container hinzu
+	score_container.add_child(score_title)
+	score_container.add_child(score_value)
+	
+	# Füge den Container zur UI hinzu und positioniere ihn
+	$VBoxContainer.add_child(score_container)
+	$VBoxContainer.move_child(score_container, 0)  # Move to top
+	
+	# Zeige nur den EXIT Button
+	if _continue_button:
+		_continue_button.visible = false
+	if _menu_button:
+		_menu_button.visible = true
+	$VBoxContainer/ButtonsContainer.visible = true
+	
+	# Aktualisiere den Titel-Text
+	if $VBoxContainer.has_node("Label"):
+		$VBoxContainer/Label.text = "Game Over"
+	
+	print("Game over screen shown with final score: ", final_score)

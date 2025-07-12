@@ -76,6 +76,31 @@ theme_override_font_sizes/font_size = 24
 text = "Du hast ein 'Stap Scratch' Item erhalten!"
 horizontal_alignment = 1
 
+[node name="ButtonsContainer" type="HBoxContainer" parent="VBoxContainer"]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 30
+
+[node name="ContinueButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBox_ButtonHover")
+theme_override_styles/pressed = SubResource("StyleBox_ButtonHover")
+theme_override_styles/normal = SubResource("StyleBox_Button")
+text = "Continue"
+flat = true
+
+[node name="MenuButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBox_ButtonHover")
+theme_override_styles/pressed = SubResource("StyleBox_ButtonHover")
+theme_override_styles/normal = SubResource("StyleBox_Button")
+text = "EXIT"
+flat = true
+
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4

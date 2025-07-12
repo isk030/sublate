@@ -205,9 +205,11 @@ func add_score(score: int) -> void:
 	print("==== add_score DONE ====")
 
 # Diese Funktion wird aufgerufen, wenn ein neues Spiel beginnt
-func reset_game() -> void:
+# Parameter reset_buffs gibt an, ob die Buffs zurückgesetzt werden sollen
+func reset_game(reset_buffs: bool = true) -> void:
 	# Alle Punktestände und Zustände zurücksetzen
 	print("\n==== reset_game CALLED ====")
+	print("reset_buffs: ", reset_buffs)
 	_current_score = 0
 	_pairs_found = 0
 	_current_streak = 0
@@ -215,10 +217,13 @@ func reset_game() -> void:
 	_last_round_points = 0
 	_threshold_reached = false
 	
-	# Alle Buffs zurücksetzen
-	_enable_heat_bonus = false
-	_enable_base_point_increase = false
-	print("ScoreManager: Alle Buffs zurückgesetzt")
+	# Alle Buffs zurücksetzen, aber nur wenn ausdrücklich gewünscht
+	if reset_buffs:
+		_enable_heat_bonus = false
+		_enable_base_point_increase = false
+		print("ScoreManager: Alle Buffs zurückgesetzt")
+	else:
+		print("ScoreManager: Buffs werden beibehalten: Heat=", _enable_heat_bonus, ", BasePoints=", _enable_base_point_increase)
 	
 	# Lauf-Zähler auf 1 zurücksetzen
 	_current_run = 1
