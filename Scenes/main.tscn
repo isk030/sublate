@@ -175,21 +175,6 @@ layout_mode = 2
 layout_mode = 2
 theme_override_constants/separation = 73
 
-[node name="ColorRect" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
-
-[node name="ColorRect2" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
-
-[node name="ColorRect3" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
-
 [node name="Control2" type="Control" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer"]
 custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
@@ -197,16 +182,6 @@ layout_mode = 2
 [node name="HBoxContainer2" type="HBoxContainer" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 245
-
-[node name="ColorRect4" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer2"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
-
-[node name="ColorRect5" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer2"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
 
 [node name="InventoryPanel" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel" instance=ExtResource("17_yqxm4")]
 layout_mode = 1

@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3 uid="uid://b4c2i17hf3l4s"]
+[gd_scene load_steps=4 format=3 uid="uid://b4c2i17hf3l4s"]
 
-[ext_resource type="Script" path="res://Scenes/ItemWidget.gd" id="1_ajfwc"]
+[ext_resource type="Script" uid="uid://cdvstffmah8ey" path="res://Scenes/ItemWidget.gd" id="1_ajfwc"]
+[ext_resource type="Texture2D" path="res://assets/images/ChatGPT Bild Juli 12 2025.png" id="2_l0016"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0al24"]
 bg_color = Color(0.196078, 0.196078, 0.196078, 0.588235)
@@ -52,12 +53,14 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -24.0
-offset_bottom = -16.0
+offset_left = 7.0
+offset_top = 5.0
+offset_right = 7.0
+offset_bottom = 19.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_font_sizes/font_size = 10
-text = "Stap Scratch"
+text = "Stab Scratch"
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -68,13 +71,22 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -24.0
-offset_top = -24.0
-offset_right = -4.0
-offset_bottom = -4.0
+offset_left = -44.0
+offset_top = 15.0
+offset_right = -24.0
+offset_bottom = 35.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_font_sizes/font_size = 12
 text = "0"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="ItemContainer"]
+layout_mode = 0
+offset_left = 5.0
+offset_top = 4.0
+offset_right = 86.0
+offset_bottom = 85.0
+texture = ExtResource("2_l0016")
+expand_mode = 1
