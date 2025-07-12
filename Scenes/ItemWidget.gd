@@ -10,6 +10,7 @@ var _item_id: String = ""
 var _count: int = 0
 var _enabled: bool = false
 var _inventory_manager = null
+var _is_display_only: bool = false
 
 # Signal, wenn das Item verwendet werden soll
 signal item_used(item_id: String)
@@ -63,11 +64,30 @@ func set_enabled(enabled: bool) -> void:
 		_button.disabled = not _enabled
 		
 	# Zeige das Widget nur, wenn es aktiviert ist oder mindestens 1 Item vorhanden ist
-	visible = _enabled or _count > 0
+	# Bei Display-Only Widgets immer sichtbar, wenn sie aktiviert sind
+	if _is_display_only:
+		visible = _enabled
+	else:
+		visible = _enabled or _count > 0
 	
 	# Verdunkle das Icon, wenn deaktiviert
 	if _icon_texture:
 		_icon_texture.modulate.a = 1.0 if _enabled else 0.5
+		
+# Setzt das Widget auf Display-Only Modus (nicht klickbar, nur zur Anzeige)
+func set_as_display_only() -> void:
+	_is_display_only = true
+	if _button:
+		# Entferne die Klick-Interaktion
+		_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_button.disabled = false
+		
+	# Verstecke die Anzahl, da sie für Buffs nicht relevant ist
+	if _count_label:
+		_count_label.visible = false
+	
+	# Aktiviere standardmäßig
+	_enabled = true
 
 # Callback für InventoryManager-Signale
 func _on_item_count_changed(item_id: String, count: int) -> void:

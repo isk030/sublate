@@ -178,6 +178,11 @@ func _on_shop_buff_selected(buff_type: String) -> void:
 			if Card:
 				Card.enable_buff_animations = true
 				print("Card buff animations enabled for base point increase!")
+				
+	# Aktualisiere die Buff-Anzeigen im Inventory-Panel
+	if _inventory_panel and _inventory_panel.has_method("update_buff_displays"):
+		_inventory_panel.update_buff_displays()
+		print("Updated buff displays in inventory panel")
 	
 	# Prepare for next run - increment run counter and double target score
 	if ScoreManager:
@@ -218,6 +223,14 @@ func _initialize_inventory_panel() -> void:
 		return
 	
 	print("Initializing inventory panel...")
+	
+	# Setze GameManager-Referenz
+	_inventory_panel.set_game_manager(GameManager)
+	
+	# Initialisiere Buff-Anzeigen im Inventory-Panel
+	if _inventory_panel.has_method("update_buff_displays"):
+		_inventory_panel.update_buff_displays()
+		print("Updated buff displays in inventory panel")
 	
 	# Connect the use_item signal from the inventory panel to handle item usage
 	# This assumes the InventoryPanel has a signal called item_used that's emitted when an item is used
