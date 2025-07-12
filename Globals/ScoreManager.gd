@@ -222,6 +222,17 @@ func reset_game(reset_buffs: bool = true) -> void:
 		_enable_heat_bonus = false
 		_enable_base_point_increase = false
 		print("ScoreManager: Alle Buffs zurückgesetzt")
+		
+		# Deaktiviere das Karten-Highlighting, wenn der Heat Buff zurückgesetzt wird
+		var rhythm_manager = get_node_or_null("/root/CardRhythmManager")
+		if not rhythm_manager:
+			# Versuche es über den Node-Pfad in der Szene
+			rhythm_manager = get_node_or_null("/root/Main/Node")
+		
+		if rhythm_manager and rhythm_manager.get_script() and rhythm_manager.get_script().get_path().find("CardRhythmManager") != -1:
+			if "enable_highlighting" in rhythm_manager:
+				rhythm_manager.enable_highlighting = false
+				print("ScoreManager: Card highlighting DISABLED for heat bonus after game reset")
 	else:
 		print("ScoreManager: Buffs werden beibehalten: Heat=", _enable_heat_bonus, ", BasePoints=", _enable_base_point_increase)
 	
