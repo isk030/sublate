@@ -288,12 +288,11 @@ func _connect_score_signals() -> void:
 		if not ScoreManager.score_threshold_reached.is_connected(_on_score_threshold_reached):
 			ScoreManager.score_threshold_reached.connect(_on_score_threshold_reached)
 	
-	# Connect shop UI signals if it exists
+	# Connect shop ui signals
 	if _shop_ui:
 		if not _shop_ui.buff_selected.is_connected(_on_shop_buff_selected):
 			_shop_ui.buff_selected.connect(_on_shop_buff_selected)
 			
-		# Connect the continue_game and open_menu signals
 		if not _shop_ui.continue_game.is_connected(_on_shop_continue_game):
 			_shop_ui.continue_game.connect(_on_shop_continue_game)
 			print("ShopUI continue_game signal connected")
@@ -301,6 +300,10 @@ func _connect_score_signals() -> void:
 		if not _shop_ui.exit_game.is_connected(_on_shop_open_menu):
 			_shop_ui.exit_game.connect(_on_shop_open_menu)
 			print("ShopUI exit_game signal connected")
+			
+		if not _shop_ui.new_run.is_connected(_on_shop_new_run):
+			_shop_ui.new_run.connect(_on_shop_new_run)
+			print("ShopUI new_run signal connected")
 
 func _on_score_threshold_reached() -> void:
 	if _shop_ui:
@@ -422,6 +425,43 @@ func _on_shop_open_menu() -> void:
 	print("ShopUI: EXIT button pressed, quitting game")
 	# Quit the game
 	get_tree().quit()
+
+# Handler for the NEW RUN button signal from ShopUI - resets the game completely
+func _on_shop_new_run() -> void:
+	print("ShopUI: NEW RUN button pressed, completely resetting game")
+	# Hide ShopUI
+	if _shop_ui:
+		_shop_ui.visible = false
+	
+	# Stop all audio first
+	_pause_music()
+	
+	# Reset game state completely
+	if GameManager:
+		GameManager.reset_game(true)  # true = reset all buffs
+	
+	# Reset score and buffs
+	if ScoreManager:
+		# Reset score completely
+		ScoreManager.reset_game(true)
+	
+	# Aktualisiere das Inventar und die Buff-Anzeigen
+	if _inventory_panel:
+		# Falls möglich, rufe eine reset_inventory-Methode auf
+		if _inventory_panel.has_method("reset_inventory"):
+			_inventory_panel.reset_inventory()
+			print("Reset inventory panel")
+		
+		# Aktualisiere die Buff-Anzeigen
+		if _inventory_panel.has_method("update_buff_displays"):
+			_inventory_panel.update_buff_displays()
+			print("Updated buff displays in inventory panel after reset")
+	
+	# Play random music
+	_play_random_music()
+	
+	# Unpause the game
+	get_tree().paused = false
 
 # Handler for the all_pairs_found event when all card pairs have been matched
 func _on_all_pairs_found() -> void:

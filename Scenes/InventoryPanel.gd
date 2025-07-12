@@ -150,3 +150,21 @@ func _update_buff_displays() -> void:
 # Öffentliche Methode zum manuellen Aktualisieren der Buff-Anzeigen
 func update_buff_displays() -> void:
 	_update_buff_displays()
+
+# Reset das Inventar vollständig für einen neuen Run
+func reset_inventory() -> void:
+	print("InventoryPanel: Resetting inventory for new run")
+	
+	# Reset des InventoryManagers, falls vorhanden
+	if _inventory_manager and _inventory_manager.has_method("reset_inventory"):
+		_inventory_manager.reset_inventory()
+		print("InventoryPanel: InventoryManager reset successful")
+	
+	# Aktualisiere die Item-Widgets mit neuen Werten
+	if _stap_scratch_widget and _inventory_manager:
+		_stap_scratch_widget.update_count(_inventory_manager.get_item_count(_inventory_manager.ITEM_STAP_SCRATCH))
+		print("InventoryPanel: Updated stap scratch count after reset")
+	
+	# Aktualisiere auch die Buff-Anzeigen
+	_update_buff_displays()
+	print("InventoryPanel: Buff displays updated after inventory reset")

@@ -3,6 +3,7 @@ extends Control
 signal buff_selected(buff_type: String)
 signal continue_game
 signal exit_game
+signal new_run
 
 # Button-Referenzen
 @onready var _heat_buff_container = $VBoxContainer/HBoxContainer/ColorRect
@@ -15,6 +16,7 @@ signal exit_game
 # Audio-Player für die Gewinn-Musik
 @onready var _music_player = AudioStreamPlayer.new()
 @onready var _continue_button = $VBoxContainer/ButtonsContainer/ContinueButton
+@onready var _new_run_button = $VBoxContainer/ButtonsContainer/NewRunButton
 @onready var _menu_button = $VBoxContainer/ButtonsContainer/MenuButton
 const GEWINN_MUSIC = preload("res://assets/music/Gewinn.mp3")
 
@@ -34,6 +36,10 @@ func _ready() -> void:
 	if _continue_button:
 		_continue_button.pressed.connect(_on_continue_button_pressed)
 		print("Continue button connected")
+
+	if _new_run_button:
+		_new_run_button.pressed.connect(_on_new_run_button_pressed)
+		print("New Run button connected")
 		
 	if _menu_button:
 		_menu_button.pressed.connect(_on_menu_button_pressed)
@@ -155,6 +161,13 @@ func _on_continue_button_pressed() -> void:
 	# Die Hauptmusik wird automatisch neu gestartet
 	# (ähnlich wie bei den Buff-Buttons)
 
+# Handler für den New Run Button - startet ein komplett neues Spiel
+func _on_new_run_button_pressed() -> void:
+	print("New Run button pressed - starting fresh game")
+	emit_signal("new_run")
+	visible = false
+	_music_player.stop()
+	
 # Handler für den EXIT-Button
 func _on_menu_button_pressed() -> void:
 	emit_signal("exit_game")
@@ -208,25 +221,33 @@ func show_game_over_screen(final_score: int) -> void:
 	if _base_points_buff_container:
 		_base_points_buff_container.visible = false
 	
-	# Entferne vorherigen Score-Container, falls vorhanden
-	var old_score = $VBoxContainer.get_node_or_null("ScoreContainer")
-	if old_score:
-		old_score.queue_free()
+	# WICHTIG: Entferne ALLE vorhandenen Score-Anzeigen in der VBoxContainer
+	# Suche nach ALLEN Nodes, die ScoreContainer im Namen haben oder Score-Labels sein könnten
+	for child in $VBoxContainer.get_children():
+		# Entferne alle bestehenden Score Container
+		if child.name == "ScoreContainer" or "Score" in child.name:
+			child.queue_free()
+		# Prüfe auch explizit auf Labels mit Score-Texten
+		elif child is Label and ("score" in child.text.to_lower() or child.text.is_valid_int()):
+			child.visible = false
 	
-	# Erstelle einen Container für die Score-Labels
+	# Warte kurz, bis die zu entfernenden Nodes wirklich entfernt wurden
+	await get_tree().process_frame
+	
+	# Erstelle einen neuen Container für den Score
 	var score_container = VBoxContainer.new()
 	score_container.name = "ScoreContainer"
 	score_container.size_flags_horizontal = Control.SIZE_FILL
 	score_container.size_flags_vertical = Control.SIZE_FILL
 	
-	# Erstelle und zeige ein Label für "Your Score"
+	# Erstelle das "Your Score" Label
 	var score_title = Label.new()
 	score_title.text = "Your Score"
 	score_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_title.add_theme_font_size_override("font_size", 32)
 	score_title.add_theme_color_override("font_color", Color(1, 1, 1))
 	
-	# Erstelle und zeige ein Label für den Punktwert
+	# Erstelle das Label für den Punktestand (nur aktueller Run)
 	var score_value = Label.new()
 	score_value.text = str(final_score)
 	score_value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -237,13 +258,15 @@ func show_game_over_screen(final_score: int) -> void:
 	score_container.add_child(score_title)
 	score_container.add_child(score_value)
 	
-	# Füge den Container zur UI hinzu und positioniere ihn
+	# Füge den Container zur UI hinzu und positioniere ihn ganz oben
 	$VBoxContainer.add_child(score_container)
-	$VBoxContainer.move_child(score_container, 0)  # Move to top
+	$VBoxContainer.move_child(score_container, 0)
 	
-	# Zeige nur den EXIT Button
+	# Zeige nur den New Run und EXIT Button
 	if _continue_button:
 		_continue_button.visible = false
+	if _new_run_button:
+		_new_run_button.visible = true
 	if _menu_button:
 		_menu_button.visible = true
 	$VBoxContainer/ButtonsContainer.visible = true

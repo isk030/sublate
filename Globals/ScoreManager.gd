@@ -277,7 +277,7 @@ func _update_ui() -> void:
 			# Emit signal with the current run number
 			emit_signal("score_threshold_reached")
 			emit_signal("run_completed", _current_run, true)
-		print("Score threshold reached! Showing shop UI...")
+			print("Score threshold reached! Showing shop UI...")
 	
 	if _score_progress_bar:
 		print("Before update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
