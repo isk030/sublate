@@ -215,10 +215,21 @@ func reset_game() -> void:
 	_last_round_points = 0
 	_threshold_reached = false
 	
+	# Alle Buffs zurücksetzen
+	_enable_heat_bonus = false
+	_enable_base_point_increase = false
+	print("ScoreManager: Alle Buffs zurückgesetzt")
+	
+	# Lauf-Zähler auf 1 zurücksetzen
+	_current_run = 1
+	# Ziel-Score zurücksetzen
+	_max_score_target = _base_score_target
+	
 	# UI zurücksetzen
 	if _factor_two_label:
 		_factor_two_label.text = "0"  # Auf 0 zurücksetzen
 	reset_score_panel()
+	reset_score_progress_bar()
 	_reset_heat_progress()
 	print("==== reset_game DONE ====")
 	reset_score_progress_bar()

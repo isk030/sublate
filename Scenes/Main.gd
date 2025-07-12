@@ -349,9 +349,40 @@ func _on_shop_buff_selected(buff_type: String) -> void:
 func _on_menu_start_pressed() -> void:
 	toggle_menu(false)
 	
-	# Reset game state if needed
+	# Reset game state and score manager (including buffs)
 	if GameManager:
 		GameManager.reset_game()
+	
+	# Reset score manager to clear all buffs for new run
+	if ScoreManager:
+		ScoreManager.reset_game()
+		print("ScoreManager: Reset for new run (including all buffs)")
+		
+	# Inventar zurücksetzen (Stab Scratches etc.)
+	var inventory_manager = get_node_or_null("/root/InventoryManager")
+	if inventory_manager and inventory_manager.has_method("reset_inventory"):
+		inventory_manager.reset_inventory()
+		print("Inventory has been reset for new run")
+	
+	# Aktualisiere auch die Buff-Anzeigen im Inventory Panel
+	if _inventory_panel and _inventory_panel.has_method("update_buff_displays"):
+		_inventory_panel.update_buff_displays()
+		print("Updated buff displays in inventory panel after reset")
+	
+	# Stelle sicher, dass CardRhythmManager das Highlighting deaktiviert
+	var rhythm_manager = get_node_or_null("Node")
+	if rhythm_manager and rhythm_manager.get_script() and rhythm_manager.get_script().get_path().ends_with("CardRhythmManager.gd"):
+		rhythm_manager.enable_highlighting = false
+		print("Card highlighting disabled after reset")
+		
+	# Auch die Card-Buff-Animationen deaktivieren
+	var Card = load("res://Globals/Card.gd")
+	if Card:
+		Card.enable_buff_animations = false
+		print("Card buff animations disabled after reset")
+		
+	# Start music again if it was stopped
+	_play_random_music()
 
 func _on_menu_continue_pressed() -> void:
 	toggle_menu(false)

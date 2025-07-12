@@ -54,3 +54,14 @@ func award_start_items() -> void:
 	if _inventory_initialized:
 		add_item(ITEM_STAP_SCRATCH, 1)
 		print("Start-Items vergeben")
+
+# Setzt das Inventar für einen neuen Spielstart zurück
+func reset_inventory() -> void:
+	# Setze alle Items zurück
+	for item_id in _items.keys():
+		_items[item_id] = 0
+		emit_signal("item_count_changed", item_id, 0)
+	
+	# Setze auch den Initialisierungsstatus zurück
+	_inventory_initialized = false
+	print("Inventar wurde vollständig zurückgesetzt")
