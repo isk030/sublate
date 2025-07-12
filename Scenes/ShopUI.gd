@@ -55,9 +55,9 @@ func show_shop() -> void:
 		
 		# Wenn beide Buffs aktiviert sind, einen Hinweis anzeigen
 		if ScoreManager.is_heat_bonus_enabled() and ScoreManager.is_base_point_increase_enabled():
-			$VBoxContainer/Label.text = "Alle Buffs aktiviert!"
+			$VBoxContainer/Label.text = "All Buffs activated!"
 		else:
-			$VBoxContainer/Label.text = "Well Done choose your Buff!"
+			$VBoxContainer/Label.text = "Well Done! Choose your Buff!"
 
 func _on_heat_buff_pressed() -> void:
 	_award_inventory_items()
