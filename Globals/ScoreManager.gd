@@ -5,12 +5,23 @@ const BASE_POINTS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/BasePointsM
 const STREAK_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/StreakModifier.gd")
 const HEAT_BONUS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/HeatBonusModifier.gd")
 const MODIFIER_MANAGER_SCRIPT = preload("res://Scoring/ModifierManager.gd")
+# Sound file paths - will be loaded at runtime to handle potential format issues
+const HEAT_BONUS_SOUND_PATH = "res://assets/sounds/woo.mp3"
+const STREAK_2_SOUND_PATH = "res://assets/sounds/yeah1.mp3"
+const STREAK_3_SOUND_PATH = "res://assets/sounds/yeah2.mp3" # Beachte das Leerzeichen im Dateinamen
+const STREAK_4_SOUND_PATH = "res://assets/sounds/yeah3.mp3"
 
 # Modifier-Instanzen
 var _modifier_manager = null
 var _base_points_modifier = null
 var _streak_modifier = null
 var _heat_bonus_modifier = null
+
+# Audio players for sound effects
+var _heat_bonus_audio_player: AudioStreamPlayer = null
+var _streak_2_audio_player: AudioStreamPlayer = null
+var _streak_3_audio_player: AudioStreamPlayer = null
+var _streak_4_audio_player: AudioStreamPlayer = null
 
 # UI Referenzen
 @onready var _total_score_label: Label = null
@@ -109,6 +120,34 @@ func _init() -> void:
 	# Modifier erstellen
 	_base_points_modifier = BASE_POINTS_MODIFIER_SCRIPT.new()
 	_streak_modifier = STREAK_MODIFIER_SCRIPT.new()
+	
+	# Create audio players for sound effects
+	_heat_bonus_audio_player = AudioStreamPlayer.new()
+	_heat_bonus_audio_player.bus = "SFX" # Use SFX audio bus if available
+	_heat_bonus_audio_player.volume_db = -5.0 # Slightly lower volume
+	add_child(_heat_bonus_audio_player)
+	
+	_streak_2_audio_player = AudioStreamPlayer.new()
+	_streak_2_audio_player.bus = "SFX"
+	_streak_2_audio_player.volume_db = -5.0
+	add_child(_streak_2_audio_player)
+	
+	_streak_3_audio_player = AudioStreamPlayer.new()
+	_streak_3_audio_player.bus = "SFX"
+	_streak_3_audio_player.volume_db = -5.0
+	add_child(_streak_3_audio_player)
+	
+	_streak_4_audio_player = AudioStreamPlayer.new()
+	_streak_4_audio_player.bus = "SFX"
+	_streak_4_audio_player.volume_db = -5.0
+	add_child(_streak_4_audio_player)
+	
+	# Load audio streams
+	_load_audio_stream(_heat_bonus_audio_player, HEAT_BONUS_SOUND_PATH, "Heat Bonus")
+	_load_audio_stream(_streak_2_audio_player, STREAK_2_SOUND_PATH, "Streak 2")
+	_load_audio_stream(_streak_3_audio_player, STREAK_3_SOUND_PATH, "Streak 3")
+	_load_audio_stream(_streak_4_audio_player, STREAK_4_SOUND_PATH, "Streak 4+")
+	
 	_heat_bonus_modifier = HEAT_BONUS_MODIFIER_SCRIPT.new()
 	
 	# Modifier in der richtigen Reihenfolge hinzufügen
@@ -365,7 +404,16 @@ func _on_pair_found(data: Dictionary) -> void:
 	_pairs_found = data.get("pairs_found", _pairs_found + 1)
 	
 	# Increase streak for every match
+	# Vorherigen Streak-Wert speichern, um zu erkennen, wann ein neuer Streak-Level erreicht wird
+	var old_streak = _current_streak
+	
+	# Streak erhöhen
 	_current_streak = 1 if _current_streak == 0 else _current_streak + 1
+	
+	# Soundeffekt basierend auf neuem Streak abspielen
+	# Nur abspielen, wenn ein neuer Streak-Level erreicht wurde (nicht beim ersten Paar)
+	if _current_streak >= 2 and _current_streak > old_streak:
+		_play_streak_sound(_current_streak)
 	
 	# Apply base points (100 for first pair, 100 + 20*(n-1) for subsequent pairs if enabled)
 	var base_points = 100
@@ -455,6 +503,7 @@ func set_game_won_message_label(label_ref: Label) -> void:
 
 # Bonus activation methods for ShopUI
 func set_heat_bonus_enabled(enabled: bool) -> void:
+	# Update the state
 	_enable_heat_bonus = enabled
 	print("Heat bonus ", "enabled" if enabled else "disabled")
 
@@ -676,14 +725,55 @@ func _on_card_flipped_in_rhythm(card) -> void:
 	print("==== _on_card_flipped_in_rhythm DONE ====")
 
 func _show_heat_text() -> void:
+	# Zeige HEAT! Text an
 	if _heat_label:
 		_heat_label.text = "HEAT!"
 		_heat_label.visible = true
+	
+	# Spiele den Sound ab, wenn der Heat-Bonus ausgelöst wird
+	if _heat_bonus_audio_player and _heat_bonus_audio_player.stream:
+		print("Playing heat bonus sound effect: woo.mp3")
+		_heat_bonus_audio_player.play()
+		if not _heat_bonus_audio_player.playing:
+			push_error("ScoreManager: Failed to play heat bonus sound effect")
+	
 	# Kurze Verzögerung, dann zurücksetzen
 	await get_tree().create_timer(0.6).timeout
 	if _heat_label:
 		_heat_label.visible = false
 	_reset_heat_progress()
+
+# Helper function to load audio streams
+func _load_audio_stream(audio_player: AudioStreamPlayer, sound_path: String, sound_name: String) -> void:
+	# Try to load the sound file
+	var file_exists = FileAccess.file_exists(sound_path)
+	if file_exists:
+		var audio_stream = load(sound_path)
+		if audio_stream:
+			audio_player.stream = audio_stream
+			print("Successfully loaded " + sound_name + " sound")
+		else:
+			push_error("ScoreManager: Failed to load audio stream from " + sound_path)
+	else:
+		push_error("ScoreManager: Audio file not found at " + sound_path)
+
+# Play appropriate sound effect based on streak level
+func _play_streak_sound(streak_level: int) -> void:
+	if streak_level == 2 and _streak_2_audio_player and _streak_2_audio_player.stream:
+		print("Playing streak 2 sound effect: yeah1.mp3")
+		_streak_2_audio_player.play()
+		if not _streak_2_audio_player.playing:
+			push_error("ScoreManager: Failed to play streak 2 sound effect")
+	elif streak_level == 3 and _streak_3_audio_player and _streak_3_audio_player.stream:
+		print("Playing streak 3 sound effect: yeah2.mp3")
+		_streak_3_audio_player.play()
+		if not _streak_3_audio_player.playing:
+			push_error("ScoreManager: Failed to play streak 3 sound effect")
+	elif streak_level >= 4 and _streak_4_audio_player and _streak_4_audio_player.stream:
+		print("Playing streak 4+ sound effect: yeah3.mp3")
+		_streak_4_audio_player.play()
+		if not _streak_4_audio_player.playing:
+			push_error("ScoreManager: Failed to play streak 4+ sound effect")
 
 # Attempt to connect to ANY node that exposes the `card_flipped_in_rhythm` signal.
 # This avoids brittleness if the node is renamed (e.g. Godot appends "2" when duplicates exist).
