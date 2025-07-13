@@ -31,8 +31,8 @@ var _game_won_message_label: Label = null
 
 # Fortschrittsanzeige
 @onready var _score_progress_bar: ProgressBar = null
-var _max_score_target: float = 2800.0  # Maximale Punktzahl für die Fortschrittsleiste
-var _base_score_target: float = 2800.0  # Basis-Punktzahl (wird pro Run verdoppelt)
+var _max_score_target: float = 5000.0  # Maximale Punktzahl für die Fortschrittsleiste
+var _base_score_target: float = 1000.0  # Basis-Punktzahl (wird pro Run verdoppelt)
 var _current_run: int = 1  # Aktueller Spiel-Run (1, 2, 3, ...)
 
 # Spielzustand
