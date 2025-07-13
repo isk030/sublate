@@ -234,3 +234,20 @@ func set_as_matched() -> void:
 
 func flip_back() -> void:
 	flip_down()
+
+# Bereinigt alle laufenden Animationen und Kind-Nodes
+func cleanup_animations() -> void:
+	# Floating Labels und andere temporäre Nodes entfernen
+	for child in get_children():
+		if child is FloatingLabel or child.get_class() == "FloatingLabel":
+			child.queue_free()
+	
+	# In Godot 4 sind Tweens keine Nodes mehr, sondern werden vom SceneTree verwaltet
+	# Wir können also keine direkten Kind-Nodes vom Typ Tween finden
+	# Stattdessen setzen wir einfach die Modulation zurück
+	
+	# Modulation zurücksetzen
+	modulate = Color.WHITE
+	
+	# Rhythm-Status zurücksetzen
+	was_flipped_in_rhythm = false

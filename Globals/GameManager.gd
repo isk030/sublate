@@ -110,8 +110,19 @@ func init_game_elements() -> void:
 		return
 	var grid: GridContainer = card_area.get_node("GridContainer")
 	grid.columns = CARD_GRID_COLUMNS
+	
+	# Entferne alle vorhandenen Karten und warte einen Frame, um sicherzustellen, dass
+	# sie vollständig entfernt wurden, bevor neue erstellt werden
 	for c in grid.get_children():
+		# Stoppe alle laufenden Animationen und Tween-Prozesse
+		if c.has_method("cleanup_animations"):
+			c.cleanup_animations()
 		c.queue_free()
+	
+	# Warte einen Frame, um sicherzustellen, dass alle Karten entfernt wurden
+	await get_tree().process_frame
+	
+	# Erstelle neue Karten
 	for _i in range(DEFAULT_CARD_AREA_SIZE):
 		_init_single_card(grid)
 

@@ -442,6 +442,11 @@ func _on_shop_new_run() -> void:
 	# Stop all audio first
 	_pause_music()
 	
+	# Reset static variables for Card animations
+	var Card = load("res://Globals/Card.gd")
+	Card.enable_buff_animations = false  # Deaktiviere den Buff-Animationen-Status explizit
+	print("Explicitly reset Card.enable_buff_animations to false")
+	
 	# Reset game state completely
 	if GameManager:
 		GameManager.reset_game(true)  # true = reset all buffs
