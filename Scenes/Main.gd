@@ -352,12 +352,8 @@ func _on_shop_buff_selected(buff_type: String) -> void:
 	
 	# Prepare for next run - increment run counter and double target score
 	if ScoreManager:
-		var current_run = ScoreManager._current_run
-		if current_run < 3:  # Nur bis zum dritten Run verdoppeln
-			ScoreManager.prepare_next_run()
-			print("Prepared for run %d with target score %.0f" % [ScoreManager._current_run, ScoreManager._max_score_target])
-		else:
-			print("Maximum number of runs reached (3) - not increasing target score further")
+		ScoreManager.prepare_next_run()
+		print("Nächster Run vorbereitet - Run Counter erhöht und Target Score verdoppelt!")
 	
 	# Reset the game for a new run, but preserve the buffs that were just activated
 	if GameManager:
@@ -451,10 +447,10 @@ func _on_shop_new_run() -> void:
 	if GameManager:
 		GameManager.reset_game(true)  # true = reset all buffs
 	
-	# Reset score and buffs
+	# Bereite den nächsten Run vor (verdoppelt den Target Score)
 	if ScoreManager:
-		# Reset score completely
-		ScoreManager.reset_game(true)
+		# Wenn es ein New Run ist, sollte prepare_next_run statt reset_game verwendet werden
+		ScoreManager.prepare_next_run() # Dies verdoppelt die Zielpunktzahl automatisch
 	
 	# Aktualisiere das Inventar und die Buff-Anzeigen
 	if _inventory_panel:

@@ -36,7 +36,7 @@ func create_texture_pool(pair_count: int) -> Array[Texture2D]:
 	
 	# Sicherstellen, dass wir einen konsistenten Seed haben
 	var rng = RandomNumberGenerator.new()
-	# rng.seed = 42  # Gleicher Seed wie im GameManager
+	rng.seed = 42  # Gleicher Seed wie im GameManager
 	
 	# Mischen der einzigartigen Texturen mit Fisher-Yates Shuffle
 	var shuffled_textures = unique_textures.duplicate()

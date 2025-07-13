@@ -291,10 +291,12 @@ func reset_game(reset_buffs: bool = true) -> void:
 	else:
 		print("ScoreManager: Buffs werden beibehalten: Heat=", _enable_heat_bonus, ", BasePoints=", _enable_base_point_increase)
 	
-	# Lauf-Zähler auf 1 zurücksetzen
-	_current_run = 1
-	# Ziel-Score zurücksetzen
-	_max_score_target = _base_score_target
+	# Lauf-Zähler und Ziel-Score nur zurücksetzen, wenn auch die Buffs zurückgesetzt werden
+	if reset_buffs:
+		_current_run = 1
+		# Ziel-Score zurücksetzen
+		_max_score_target = _base_score_target
+		print("ScoreManager: Run und Target Score zurückgesetzt")
 	
 	# UI zurücksetzen
 	if _factor_two_label:

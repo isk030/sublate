@@ -62,9 +62,9 @@ func _print_rhythm_manager_path() -> void:
 		printerr("CardRhythmManager is missing the 'card_flipped_in_rhythm' signal")
 	
 	# Initialize random number generator with a fixed seed for reproducible results
-	# var random_seed = 42
-	# seed(random_seed)
-	# print("Zufallsgenerator initialisiert mit Seed: ", random_seed)
+	var random_seed = 42
+	seed(random_seed)
+	print("Zufallsgenerator initialisiert mit Seed: ", random_seed)
 	
 	# Warte bis der nächste Frame gerendert wurde
 	await get_tree().process_frame
