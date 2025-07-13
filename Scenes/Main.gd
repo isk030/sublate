@@ -13,6 +13,9 @@ extends Control
 
 # Musik-System - verwende eine globale Variable für den Player, um mehrere Instanzen zu vermeiden
 var _music_player: AudioStreamPlayer = null
+
+# Game state tracking
+var _is_highscore_mode: bool = false  # True wenn wir im Highscore-Modus sind (nach Continue)
 var _available_music = []
 var _last_played_music = ""
 var _is_music_initialized = false
@@ -416,6 +419,10 @@ func _on_shop_continue_game() -> void:
 	if _shop_ui:
 		_shop_ui.visible = false
 	
+	# Aktiviere Highscore-Modus, damit der Game Over Screen am Ende angezeigt wird
+	_is_highscore_mode = true
+	print("Highscore mode activated")
+	
 	# Play random music like when a buff is selected
 	_play_random_music()
 	
@@ -434,6 +441,10 @@ func _on_shop_new_run() -> void:
 	# Hide ShopUI
 	if _shop_ui:
 		_shop_ui.visible = false
+		
+	# Zurücksetzen des Highscore-Modus
+	_is_highscore_mode = false
+	print("Reset highscore mode to false")
 	
 	# Stop all audio first
 	_pause_music()
@@ -472,7 +483,23 @@ func _on_shop_new_run() -> void:
 
 # Handler for the all_pairs_found event when all card pairs have been matched
 func _on_all_pairs_found() -> void:
-	print("All pairs found! Game over - showing ShopUI with final score")
+	print("All pairs found! Checking mode and score threshold...")
+	
+	# Prüfen, ob der Score-Threshold erreicht wurde
+	var threshold_reached = false
+	if ScoreManager and "_threshold_reached" in ScoreManager:
+		threshold_reached = ScoreManager._threshold_reached
+		print("Score threshold reached: ", threshold_reached)
+	
+	# Im Highscore-Modus (nach Continue) immer den Game Over Screen anzeigen
+	if _is_highscore_mode:
+		print("In highscore mode - always showing game over screen")
+	# Im normalen Modus nur den Game Over Screen anzeigen wenn der Threshold NICHT erreicht wurde
+	elif threshold_reached:
+		print("Score threshold already reached - not showing game over screen")
+		return
+	else:
+		print("Score threshold not reached - showing game over screen")
 	
 	# Wait a short moment before showing the score screen
 	await get_tree().create_timer(1.0).timeout
