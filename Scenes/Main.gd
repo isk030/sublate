@@ -89,6 +89,9 @@ func _initialize_music_system() -> void:
 	_music_player.bus = "Master"
 	_music_player.volume_db = -10  # Hintergrundmusik etwas leiser
 	
+	# Füge den Player zur audio_players-Gruppe hinzu
+	_music_player.add_to_group("audio_players")
+	
 	# Verbinde das finished-Signal
 	_music_player.finished.connect(_on_music_finished)
 	
@@ -96,10 +99,12 @@ func _initialize_music_system() -> void:
 	_load_available_music()
 	_is_music_initialized = true
 	
-	# Warte einen kurzen Moment und starte dann die Musik
-	# Dies verhindert Konflikte mit anderen Audioquellen beim Start
+	# Starte die Musik nur, wenn wir nicht im Anfangsmenü sind
 	await get_tree().create_timer(0.5).timeout
-	_play_random_music()
+	if not _menu.visible:
+		_play_random_music()
+	else:
+		print("Überspringe Musik-Start, da Menü aktiv ist")
 
 # Lädt alle verfügbaren Musikdateien aus dem assets/music Ordner
 func _load_available_music() -> void:
@@ -114,23 +119,24 @@ func _load_available_music() -> void:
 	
 	print("Verfügbare Musik: ", _available_music.size(), " Tracks")
 
-# Stellt sicher, dass keine anderen Musik-Player existieren
+# Cleanup old music player instances to prevent duplicates
 func _cleanup_music_player() -> void:
-	# Stoppe und entferne den aktuellen Player
-	if _music_player:
-		if _music_player.playing:
-			_music_player.stop()
-		
-		_music_player.queue_free()
-		_music_player = null
-	
 	# Suche nach vorhandenen AudioStreamPlayers in der Szene, die unseren Namen haben
 	var existing_players = find_children("MainMusicPlayer", "AudioStreamPlayer")
+	
+	# Lösche alle gefundenen Player
 	for player in existing_players:
 		print("Entferne vorhandenen AudioStreamPlayer: ", player.name)
 		if player.playing:
 			player.stop()
 		player.queue_free()
+	
+	# Suche auch nach anderen AudioStreamPlayern im Projekt, die möglicherweise spielen
+	var all_audio_players = get_tree().get_nodes_in_group("audio_players")
+	for player in all_audio_players:
+		if player.playing and player.name != "MenuMusic":
+			print("Stoppe anderen AudioStreamPlayer: ", player.name)
+			player.stop()
 
 # Spielt eine zufällig ausgewählte Musik ab (außer Gewinn.mp3 und zuletzt gespielte)
 func _play_random_music() -> void:
@@ -534,6 +540,19 @@ func _unhandled_input(event: InputEvent) -> void:
 func toggle_menu(show_menu: bool) -> void:
 	if _menu:
 		_menu.visible = show_menu
-		if not show_menu:
+		
+		# Wenn das Menü geöffnet wird, pausiere die Hauptmusik
+		# Wenn das Menü geschlossen wird, starte die Hauptmusik wieder
+		if show_menu:
+			if _music_player and _music_player.playing:
+				print("Pausiere Hauptmusik für Menü-Musik")
+				_music_player.stop()
+		else:
 			_menu.set_opened_via_escape(false)
+			# Nur wenn wir nicht aus dem Menü heraus in ein Spiel starten,
+			# starten wir die Musik wieder (beim Spielstart wird die Musik ohnehin neu gestartet)
+			await get_tree().create_timer(0.3).timeout  # Kurze Verzögerung, um sicherzustellen, dass die Menü-Musik stoppt
+			if not _background_area.visible:  # Nur wenn wir nicht im Spiel sind
+				_play_random_music()
+	
 	_background_area.visible = not show_menu

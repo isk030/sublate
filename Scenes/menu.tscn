@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://cikf0r1y6117c"]
+[gd_scene load_steps=3 format=3 uid="uid://cikf0r1y6117c"]
 
 [ext_resource type="Script" uid="uid://ci1m22aycinjf" path="res://Scenes/menu.gd" id="1_abcde"]
+[ext_resource type="AudioStream" uid="uid://b288wfa7ycngy" path="res://assets/music/Gewinn.mp3" id="2_mxpdu"]
 
 [node name="Menu" type="Control"]
 layout_mode = 3
@@ -60,3 +61,7 @@ grow_vertical = 2
 theme_override_colors/font_color = Color(1, 0.2, 0.2, 1)
 theme_override_font_sizes/font_size = 24
 text = "Fehler"
+
+[node name="MenuMusic" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("2_mxpdu")

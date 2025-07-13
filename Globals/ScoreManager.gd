@@ -106,7 +106,7 @@ func set_progress_bar(progress_bar: ProgressBar) -> void:
 				break
 	
 	if score_label:
-		score_label.text = str(_current_score)
+		score_label.text = "%d/%d" % [_current_score, int(_max_score_target)]
 		print("Updated score label to:", score_label.text)
 	else:
 		print("Warning: Could not find any label in progress bar to update")
@@ -209,7 +209,7 @@ func reset_score_panel() -> void:
 	if _factor_one_label:
 		_factor_one_label.text = "1"
 	if _factor_two_label:
-		_factor_two_label.text = "0"  # Changed from "100" to "0"
+		_factor_two_label.text = "0"  
 	if _game_won_message_label:
 		_game_won_message_label.visible = false
 	# Fortschrittsanzeige zurücksetzen
@@ -217,6 +217,14 @@ func reset_score_panel() -> void:
 		_score_progress_bar.value = _current_score
 		# Label aktualisieren
 		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		if not score_label:
+			print("ScoreLabel not found as direct child, searching for any Label...")
+			for child in _score_progress_bar.get_children():
+				if child is Label:
+					score_label = child
+					print("Found label:", child.name, " of type:", child.get_class())
+					break
+		
 		if score_label:
 			score_label.text = str(_current_score)
 	
@@ -227,6 +235,14 @@ func reset_score_progress_bar() -> void:
 	if _score_progress_bar:
 		_score_progress_bar.value = 0
 		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		if not score_label:
+			print("ScoreLabel not found as direct child, searching for any Label...")
+			for child in _score_progress_bar.get_children():
+				if child is Label:
+					score_label = child
+					print("Found label:", child.name, " of type:", child.get_class())
+					break
+	
 		if score_label:
 			score_label.text = "0"
 
@@ -759,17 +775,17 @@ func _load_audio_stream(audio_player: AudioStreamPlayer, sound_path: String, sou
 
 # Play appropriate sound effect based on streak level
 func _play_streak_sound(streak_level: int) -> void:
-	if streak_level == 2 and _streak_2_audio_player and _streak_2_audio_player.stream:
+	if ((streak_level == 2) or (streak_level == 3)) and _streak_2_audio_player and _streak_2_audio_player.stream:
 		print("Playing streak 2 sound effect: yeah1.mp3")
 		_streak_2_audio_player.play()
 		if not _streak_2_audio_player.playing:
 			push_error("ScoreManager: Failed to play streak 2 sound effect")
-	elif streak_level == 3 and _streak_3_audio_player and _streak_3_audio_player.stream:
+	elif( streak_level == 4   or (streak_level == 5)) and _streak_3_audio_player and _streak_3_audio_player.stream:
 		print("Playing streak 3 sound effect: yeah2.mp3")
 		_streak_3_audio_player.play()
 		if not _streak_3_audio_player.playing:
 			push_error("ScoreManager: Failed to play streak 3 sound effect")
-	elif streak_level >= 4 and _streak_4_audio_player and _streak_4_audio_player.stream:
+	elif streak_level >= 6 and _streak_4_audio_player and _streak_4_audio_player.stream:
 		print("Playing streak 4+ sound effect: yeah3.mp3")
 		_streak_4_audio_player.play()
 		if not _streak_4_audio_player.playing:
