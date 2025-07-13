@@ -446,20 +446,9 @@ func _on_pair_found(data: Dictionary) -> void:
 		await get_tree().create_timer(0.1).timeout
 		_animate_heat_bonus_to_factor_two()
 		print("ScoreManager: Heat bonus label animation triggered")
-
-	# Calculate points with streak multiplier
-	if _pairs_found == 1:
-		# First pair: 100 points, plus 100 if in rhythm and heat bonus is enabled
-		_last_round_points = base_points + rhythm_bonus
-	else:
-		# Subsequent pairs: base points + rhythm bonus, multiplied by streak
-		_last_round_points = max(1, _current_streak) * (base_points + rhythm_bonus)
-
-	# Update factor two label to show base points + rhythm bonus (without streak multiplier)
-	if _factor_two_label:
-		_factor_two_label.text = str(base_points + rhythm_bonus)
 	
-	# Add to total score
+	# Points calculation
+	_last_round_points = (base_points + rhythm_bonus) * _current_streak
 	_current_score += _last_round_points
 	
 	# Debug output
@@ -471,10 +460,15 @@ func _on_pair_found(data: Dictionary) -> void:
 	
 	# Update UI to reflect the changes
 	_update_ui()
-	# Reset heat progress at end of pair (in case only one card was on beat)
-	_reset_heat_progress()
-
-
+	
+	# Check if we have accumulated enough cards flipped in rhythm AND made a match
+	# If so, show the HEAT text and play the sound
+	if _enable_heat_bonus and _heat_card_count == HEAT_TARGET_CARDS:
+		print("  Match found with full heat progress! Showing HEAT text")
+		_show_heat_text()
+	else:
+		# Reset heat progress
+		_reset_heat_progress()
 
 func _on_mismatch_attempt() -> void:
 	# Reset streak and multiplier on mismatch
@@ -733,10 +727,8 @@ func _on_card_flipped_in_rhythm(card) -> void:
 	else:
 		printerr("  ERROR: Could not find _heat_progress_bar!")
 	
-	# Bei voller Leiste "HEAT!" anzeigen und danach zurücksetzen
-	if _heat_card_count == HEAT_TARGET_CARDS:
-		print("  Target reached! Showing HEAT text")
-		_show_heat_text()
+	# Wir zeigen hier nicht mehr den HEAT Text an oder spielen den Sound ab
+	# Dies wird jetzt nur in _on_pair_found gemacht, wenn es tatsächlich ein Match gibt
 	
 	print("==== _on_card_flipped_in_rhythm DONE ====")
 
