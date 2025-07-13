@@ -1,6 +1,20 @@
-[gd_scene load_steps=2 format=3 uid="uid://c7tne7uowmnoq"]
+[gd_scene load_steps=4 format=3 uid="uid://c7tne7uowmnoq"]
 
 [ext_resource type="Script" uid="uid://bnh1jcg1drruj" path="res://Scenes/ScoreBarController.gd" id="1_optbv"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6aicf"]
+bg_color = Color(0, 0, 0, 0.25098)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7oioq"]
+bg_color = Color(0, 0, 0, 0.25098)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
 
 [node name="ScoreBar" type="Control"]
 layout_mode = 3
@@ -34,6 +48,7 @@ custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_6aicf")
 max_value = 10000.0
 value = 300.0
 show_percentage = false
@@ -77,6 +92,7 @@ custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_7oioq")
 max_value = 2.0
 show_percentage = false
 

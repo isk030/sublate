@@ -226,7 +226,7 @@ func reset_score_panel() -> void:
 					break
 		
 		if score_label:
-			score_label.text = str(_current_score)
+			score_label.text = "%d/%d" % [_current_score, int(_max_score_target)]
 	
 	print("ScoreManager: Score-Panel UI zurückgesetzt")
 
@@ -244,7 +244,7 @@ func reset_score_progress_bar() -> void:
 					break
 	
 		if score_label:
-			score_label.text = "0"
+			score_label.text = "0/%d" % [int(_max_score_target)]
 
 # Fügt Punkte hinzu
 func add_score(score: int) -> void:
@@ -389,7 +389,7 @@ func _update_ui() -> void:
 			score_label = _score_progress_bar.get_node_or_null("ScoreLabel")
 		
 		if score_label:
-			score_label.text = str(_current_score)
+			score_label.text = "%d/%d" % [_current_score, int(_max_score_target)]
 		
 		# Fallback: Try to find any Label in the progress bar
 		if not score_label:
@@ -399,8 +399,8 @@ func _update_ui() -> void:
 					break
 		
 		if score_label:
-			score_label.text = str(_current_score)
-			print("ScoreLabel in progress bar updated to: ", _current_score)
+			score_label.text = "%d/%d" % [_current_score, int(_max_score_target)]
+			print("ScoreLabel in progress bar updated to: ", score_label.text)
 		else:
 			print("Warning: Could not find ScoreLabel in progress bar")
 	else:
