@@ -83,7 +83,7 @@ horizontal_alignment = 1
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="TextureRect" type="TextureRect" parent="VBoxContainer/VBoxContainer/HBoxContainer2"]
+[node name="StabStrachTexture" type="TextureRect" parent="VBoxContainer/VBoxContainer/HBoxContainer2"]
 custom_minimum_size = Vector2(100, 100)
 layout_mode = 2
 tooltip_text = "This item allows you to return a previously matched pair back into the game face-down so it can be revealed again"

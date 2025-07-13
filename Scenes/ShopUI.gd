@@ -202,6 +202,7 @@ func _award_inventory_items() -> void:
 func show_game_over_screen(final_score: int) -> void:
 	# Zeige die Shop-UI an
 	visible = true
+	print("\n==== GAME OVER SCREEN SETUP START ====")
 	
 	# Spiele die Gewinn-Musik ab
 	if not _music_player.get_parent():
@@ -220,6 +221,16 @@ func show_game_over_screen(final_score: int) -> void:
 		_heat_buff_container.visible = false
 	if _base_points_buff_container:
 		_base_points_buff_container.visible = false
+	
+	# EXPLIZIT: Suche und verstecke ALLE Item-bezogenen Elemente
+	# 1. ItemNotification Label direkt ausblenden
+	var item_notif = $VBoxContainer/ItemNotification
+	if item_notif:
+		item_notif.visible = false
+		print("Hiding ItemNotification directly: ", item_notif.name)
+		
+	# 2. Durchsuche die gesamte Hierarchie, um ALLE Item-bezogenen Nodes zu finden
+	_hide_item_related_nodes($VBoxContainer)
 	
 	# WICHTIG: Entferne ALLE vorhandenen Score-Anzeigen in der VBoxContainer
 	# Suche nach ALLEN Nodes, die ScoreContainer im Namen haben oder Score-Labels sein könnten
@@ -275,4 +286,74 @@ func show_game_over_screen(final_score: int) -> void:
 	if $VBoxContainer.has_node("Label"):
 		$VBoxContainer/Label.text = "Game Over"
 	
+	# Weitere Item-Prüfung nach all den anderen Änderungen
+	# um wirklich sicherzustellen, dass nichts durchrutscht
+	for child in $VBoxContainer.get_children():
+		if child is TextureRect or \
+			(child.name.to_lower().contains("item") and not child.name == "ItemNotification") or \
+			child.name.to_lower().contains("scratch"):
+			child.visible = false
+			print("Final pass: Hidden item-related node: ", child.name)
+	
+	# Debug-Ausgabe für den finalen Score
 	print("Game over screen shown with final score: ", final_score)
+
+# Hilfsfunktion: Versteckt rekursiv alle Item-bezogenen Nodes
+func _hide_item_related_nodes(node: Node) -> void:
+	# Prüfe zuerst, ob der aktuelle Node item-bezogen ist
+	var should_hide = false
+	
+	# Prüfe auf item in Namen oder Scratch
+	if node.name.to_lower().contains("item") or node.name.to_lower().contains("scratch") or \
+		node.name.to_lower().contains("stab") or node.name.to_lower().contains("stap"):
+		should_hide = true
+		
+	# Besondere Prüfung für StabScratchTexture oder ähnliche Namen
+	if "texture" in node.name.to_lower() and ("scratch" in node.name.to_lower() or "stab" in node.name.to_lower() or "stap" in node.name.to_lower()):
+		should_hide = true
+		print("Found StabScratchTexture or similar: ", node.name)
+	
+	# Prüfe auf Label mit item oder scratch Text
+	if node is Label:
+		var label = node as Label
+		if label.text.to_lower().contains("item") or label.text.to_lower().contains("scratch") or \
+			label.text.to_lower().contains("stab") or label.text.to_lower().contains("stap"):
+			should_hide = true
+		# Prüfe auf +1 Label
+		if label.text.contains("+1") or label.text.contains("+ 1"):
+			should_hide = true
+	
+	# Prüfe auf TextureRect (Bilder)
+	if node is TextureRect:
+		# Wenn Elternteil "item" im Namen hat oder der Node selbst
+		var parent = node.get_parent()
+		if parent and (parent.name.to_lower().contains("item") or \
+			parent.name.to_lower().contains("scratch") or \
+			parent.name.to_lower().contains("stab") or \
+			parent.name.to_lower().contains("stap")):
+			should_hide = true
+		
+		# Oder wenn der TextureRect selbst relevante Namen hat
+		if node.name.to_lower().contains("item") or \
+			node.name.to_lower().contains("scratch") or \
+			node.name.to_lower().contains("stab") or \
+			node.name.to_lower().contains("stap"):
+			should_hide = true
+			
+		# Debug Ausgabe für alle TextureRect-Elemente
+		print("Found TextureRect: ", node.name)
+	
+	# Wenn der Node ausgeblendet werden soll
+	if should_hide and node.has_method("set_visible"):
+		node.visible = false
+		print("Hiding item-related node: ", node.name, " (type: ", node.get_class(), ")")
+	
+	# Rekursiv alle Kinder durchsuchen
+	for child in node.get_children():
+		_hide_item_related_nodes(child)
+	
+	# Jegliche Item-Bilder ausblenden (falls vorhanden)
+	for child in $VBoxContainer.get_children():
+		if child is TextureRect or (child.name.to_lower().contains("item") and not child.name.contains("notification")):
+			child.visible = false
+			print("Hidden item image: ", child.name)
