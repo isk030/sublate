@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://dnjcp3hs48f82"]
+[gd_scene load_steps=7 format=3 uid="uid://dnjcp3hs48f82"]
 
 [ext_resource type="Script" uid="uid://dr6f1qij1a0en" path="res://Scenes/ShopUI.gd" id="1_cf8d9"]
 [ext_resource type="Texture2D" uid="uid://cy7y0q7bpw6js" path="res://assets/images/ChatGPT Bild 12 Juli 2025 (1).png" id="2_a7r41"]
+[ext_resource type="Texture2D" uid="uid://deyj6wc723lnh" path="res://assets/images/ChatGPT Bild Juli 12 2025.png" id="2_v6quj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_ButtonHover"]
 bg_color = Color(0.3, 0.3, 0.3, 0.9)
@@ -67,17 +68,35 @@ theme_override_font_sizes/font_size = 48
 text = "Shop"
 horizontal_alignment = 1
 
-[node name="ItemNotification" type="Label" parent="VBoxContainer"]
-visible = false
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ItemNotification" type="Label" parent="VBoxContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_colors/font_color = Color(0.8, 0.9, 0.4, 1)
 theme_override_font_sizes/font_size = 24
-text = "Du hast ein 'Stap Scratch' Item erhalten!"
+text = "Yout got a stab scratch Item!"
 horizontal_alignment = 1
 
+[node name="HBoxContainer2" type="HBoxContainer" parent="VBoxContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="TextureRect" type="TextureRect" parent="VBoxContainer/VBoxContainer/HBoxContainer2"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+tooltip_text = "This item allows you to return a previously matched pair back into the game face-down so it can be revealed again"
+texture = ExtResource("2_v6quj")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="VBoxContainer/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.901961, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+text = "+1"
+
 [node name="ButtonsContainer" type="HBoxContainer" parent="VBoxContainer"]
-visible = false
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
