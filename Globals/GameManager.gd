@@ -36,22 +36,16 @@ func _ready() -> void:
 	# Initialize random number generator
 	randomize()
 	
-	# Create and add CardRhythmManager if it doesn't exist
+	# Look up the singleton CardRhythmManager (should be provided via autoload or scene)
 	card_rhythm_manager = get_node_or_null("/root/CardRhythmManager")
-	if not card_rhythm_manager:
-		print("Creating new CardRhythmManager...")
-		card_rhythm_manager = CardRhythmManager.new()
-		card_rhythm_manager.name = "CardRhythmManager"
-		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
-		# Use call_deferred to add the child safely
-		get_node("/root").call_deferred("add_child", card_rhythm_manager)
-		print("Created and added CardRhythmManager to scene tree")
-		
-		# Print the full path after the node is added
-		call_deferred("_print_rhythm_manager_path")
+	if card_rhythm_manager:
+		print("Found existing CardRhythmManager (singleton)")
+		card_rhythm_manager.debug_mode = true
+		# Ensure it's in the RhythmManager group for others to find
+		if not card_rhythm_manager.is_in_group("RhythmManager"):
+			card_rhythm_manager.add_to_group("RhythmManager")
 	else:
-		print("Found existing CardRhythmManager")
-		card_rhythm_manager.debug_mode = true  # Ensure debug mode is on
+		printerr("GameManager: CardRhythmManager singleton not found! Please add it as Autoload or child of root.")
 
 # Helper function to print the path after the node is added
 func _print_rhythm_manager_path() -> void:
@@ -68,22 +62,25 @@ func _print_rhythm_manager_path() -> void:
 		printerr("CardRhythmManager is missing the 'card_flipped_in_rhythm' signal")
 	
 	# Initialize random number generator with a fixed seed for reproducible results
-	var random_seed = 42
-	seed(random_seed)
-	print("Zufallsgenerator initialisiert mit Seed: ", random_seed)
+	# var random_seed = 42
+	# seed(random_seed)
+	# print("Zufallsgenerator initialisiert mit Seed: ", random_seed)
 	
 	# Warte bis der nächste Frame gerendert wurde
 	await get_tree().process_frame
-	reset_game()  # Dies ruft init_player_panel() auf
+	reset_game(true)  # Dies ruft init_player_panel() auf - Parameter true zum Rücksetzen aller Buffs
 
 # Public API
-func reset_game() -> void:
+# Parameter reset_buffs gibt an, ob die Buffs zurückgesetzt werden sollen
+# Reset the game state, optionally resetting buffs as well
+# @param reset_buffs - Whether to also reset buff states
+func reset_game(reset_buffs := true) -> void:
 	_reset_texture_pool()
 	if card_area and is_instance_valid(card_area):
 		init_game_elements()
-	# Verwende die neue reset_game-Funktion des ScoreManagers
+	# Verwende die neue reset_game-Funktion des ScoreManagers und gib reset_buffs weiter
 	if ScoreManager:
-		ScoreManager.reset_game()
+		ScoreManager.reset_game(reset_buffs)
 	else:
 		init_player_panel()  # Fallback für Abwärtskompatibilität
 
@@ -113,8 +110,19 @@ func init_game_elements() -> void:
 		return
 	var grid: GridContainer = card_area.get_node("GridContainer")
 	grid.columns = CARD_GRID_COLUMNS
+	
+	# Entferne alle vorhandenen Karten und warte einen Frame, um sicherzustellen, dass
+	# sie vollständig entfernt wurden, bevor neue erstellt werden
 	for c in grid.get_children():
+		# Stoppe alle laufenden Animationen und Tween-Prozesse
+		if c.has_method("cleanup_animations"):
+			c.cleanup_animations()
 		c.queue_free()
+	
+	# Warte einen Frame, um sicherzustellen, dass alle Karten entfernt wurden
+	await get_tree().process_frame
+	
+	# Erstelle neue Karten
 	for _i in range(DEFAULT_CARD_AREA_SIZE):
 		_init_single_card(grid)
 
@@ -237,3 +245,66 @@ func can_player_flip_card() -> bool:
 
 func _on_card_flipped_in_rhythm(card: Node) -> void:
 	print("Perfect rhythm! Card flipped at the right time: ", card.card_identifier if card else "unknown")
+
+# Setzt ein zufällig ausgewähltes, bereits gefundenes Kartenpaar zurück
+# (für das Inventar-Item "Stap Scratch")
+func reset_random_matched_pair() -> bool:
+	print("Versuche, ein zufälliges gefundenes Kartenpaar zurückzusetzen...")
+	if card_area == null:
+		printerr("GameManager: reset_random_matched_pair - card_area is null")
+		return false
+		
+	var card_container: GridContainer = card_area.get_node_or_null("GridContainer")
+	if card_container == null:
+		printerr("GameManager: reset_random_matched_pair - GridContainer not found")
+		return false
+	
+	# Sammle alle gematchten Karten
+	var matched_cards = []
+	for child in card_container.get_children():
+		if child.get_script() == _card_script and child.is_matched:
+			matched_cards.append(child)
+	
+	# Wenn keine gematchten Karten gefunden wurden, können wir nichts zurücksetzen
+	if matched_cards.size() < 2:
+		print("Keine gematchten Kartenpaare gefunden!")
+		return false
+	
+	# Gruppiere die Karten nach ihren IDs
+	var card_groups = {}
+	for card in matched_cards:
+		if not card_groups.has(card.card_identifier):
+			card_groups[card.card_identifier] = []
+		card_groups[card.card_identifier].append(card)
+	
+	# Wähle ein zufälliges Paar aus
+	var card_ids = card_groups.keys()
+	if card_ids.is_empty():
+		return false
+		
+	var random_id = card_ids[randi() % card_ids.size()]
+	var pair_cards = card_groups[random_id]
+	
+	# Stelle sicher, dass wir ein Paar haben
+	if pair_cards.size() != 2:
+		print("Unerwartete Anzahl von Karten mit gleicher ID: ", pair_cards.size())
+		return false
+	
+	print("Setze Kartenpaar mit ID ", random_id, " zurück")
+	
+	# Setze die Karten zurück
+	for card in pair_cards:
+		card.unmark_matched() # Diese Methode muss in Card.gd implementiert werden
+		card.flip_down()
+	
+	# Reduziere die Anzahl der gefundenen Paare
+	_pairs_found -= 1
+	
+	# Sende ein Event, dass ein Paar zurückgesetzt wurde
+	EventManager.emit_event("pair_reset", {
+		"card_id": random_id,
+		"pairs_found": _pairs_found,
+		"total_pairs": _total_pairs_to_find
+	})
+	
+	return true

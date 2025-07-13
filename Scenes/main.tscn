@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://5pj1h7kwtmcp"]
+[gd_scene load_steps=17 format=3 uid="uid://5pj1h7kwtmcp"]
 
 [ext_resource type="Script" uid="uid://1pojjuwqhnei" path="res://Scenes/Main.gd" id="1_6iyac"]
 [ext_resource type="PackedScene" uid="uid://b34i7gd50ri4c" path="res://Scenes/background_area.tscn" id="1_jjgbg"]
@@ -13,7 +13,9 @@
 [ext_resource type="AudioStream" uid="uid://d006xdnpgsvwq" path="res://assets/music/Heartbeat AI Music.mp3" id="13_fdnlq"]
 [ext_resource type="Script" uid="uid://c5ms6v210iwdp" path="res://Scenes/audio_stream_player_2d.gd" id="14_jkdf5"]
 [ext_resource type="PackedScene" uid="uid://cikf0r1y6117c" path="res://Scenes/menu.tscn" id="15_abcde"]
+[ext_resource type="PackedScene" uid="uid://dnjcp3hs48f82" path="res://Scenes/shop_ui.tscn" id="15_wsu2k"]
 [ext_resource type="Script" uid="uid://cc2r3u4ubvlqp" path="res://Globals/CardRhythmManager.gd" id="16_k12tt"]
+[ext_resource type="PackedScene" uid="uid://c5ytlodq8krl8" path="res://Scenes/inventory_panel.tscn" id="17_yqxm4"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -173,21 +175,6 @@ layout_mode = 2
 layout_mode = 2
 theme_override_constants/separation = 73
 
-[node name="ColorRect" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
-
-[node name="ColorRect2" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
-
-[node name="ColorRect3" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
-
 [node name="Control2" type="Control" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer"]
 custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
@@ -196,15 +183,12 @@ layout_mode = 2
 layout_mode = 2
 theme_override_constants/separation = 245
 
-[node name="ColorRect4" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer2"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
-
-[node name="ColorRect5" type="ColorRect" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel/BuffPanel/VBoxContainer/HBoxContainer2"]
-custom_minimum_size = Vector2(100, 100)
-layout_mode = 2
-color = Color(0.57098, 0.57098, 0.57098, 1)
+[node name="InventoryPanel" parent="BackgroundArea/VBoxContainer/HBoxContainer/PlayerPanel" instance=ExtResource("17_yqxm4")]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+offset_top = -180.0
+grow_vertical = 0
 
 [node name="CardArea" parent="BackgroundArea/VBoxContainer/HBoxContainer" instance=ExtResource("2_bo1nx")]
 custom_minimum_size = Vector2(1200, 800)
@@ -239,3 +223,7 @@ layout_mode = 1
 [node name="Node" type="Node" parent="."]
 script = ExtResource("16_k12tt")
 highlight_duration = 2.0
+
+[node name="ShopUI" parent="." instance=ExtResource("15_wsu2k")]
+visible = false
+layout_mode = 1

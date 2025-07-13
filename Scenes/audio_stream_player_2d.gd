@@ -10,13 +10,15 @@ const MUSIC_PATHS = [
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	var paths = MUSIC_PATHS.duplicate()  # damit das const-Array unangetastet bleibt
-	var chosen_path = paths.pick_random()  # hier wird chosen_path gesetzt
-
-	# AudioStream laden und abspielen
-	stream = load(chosen_path) as AudioStream
+	# DEAKTIVIERT: Das Musik-System wurde in Main.gd verlagert
+	# und wird dort zentral verwaltet, um Konflikte zu vermeiden
+	pass
 	
-	play()
+	# Alter Code:
+	# var paths = MUSIC_PATHS.duplicate()
+	# var chosen_path = paths.pick_random()
+	# stream = load(chosen_path) as AudioStream
+	# play()
 	
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:

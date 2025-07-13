@@ -1,0 +1,230 @@
+[gd_scene load_steps=7 format=3 uid="uid://dnjcp3hs48f82"]
+
+[ext_resource type="Script" uid="uid://dr6f1qij1a0en" path="res://Scenes/ShopUI.gd" id="1_cf8d9"]
+[ext_resource type="Texture2D" uid="uid://cy7y0q7bpw6js" path="res://assets/images/ChatGPT Bild 12 Juli 2025 (1).png" id="2_a7r41"]
+[ext_resource type="Texture2D" uid="uid://deyj6wc723lnh" path="res://assets/images/ChatGPT Bild Juli 12 2025.png" id="2_v6quj"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_ButtonHover"]
+bg_color = Color(0.3, 0.3, 0.3, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 0.6, 0.6, 0.9)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_Button"]
+bg_color = Color(0.2, 0.2, 0.2, 0.8)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.4, 0.4, 0.4, 0.8)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_o75od"]
+load_path = "res://.godot/imported/ChatGPT Bild 12 Juli 2025 (2).png-996ff9a94cb92d59ee4afa2dc354157a.ctex"
+
+[node name="ShopUI" type="Control"]
+process_mode = 2
+z_index = 6
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_cf8d9")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.317647, 0.317647, 0.317647, 0.517647)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 30
+
+[node name="Label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 48
+text = "Shop"
+horizontal_alignment = 1
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="ItemNotification" type="Label" parent="VBoxContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(0.8, 0.9, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+text = "Yout got a stab scratch Item!"
+horizontal_alignment = 1
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="VBoxContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="StabStrachTexture" type="TextureRect" parent="VBoxContainer/VBoxContainer/HBoxContainer2"]
+custom_minimum_size = Vector2(100, 100)
+layout_mode = 2
+tooltip_text = "This item allows you to return a previously matched pair back into the game face-down so it can be revealed again"
+texture = ExtResource("2_v6quj")
+expand_mode = 1
+
+[node name="Label" type="Label" parent="VBoxContainer/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.901961, 0.4, 1)
+theme_override_font_sizes/font_size = 24
+text = "+1"
+
+[node name="ButtonsContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 30
+
+[node name="ContinueButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBox_ButtonHover")
+theme_override_styles/pressed = SubResource("StyleBox_ButtonHover")
+theme_override_styles/normal = SubResource("StyleBox_Button")
+text = "Continue"
+flat = true
+
+[node name="NewRunButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBox_ButtonHover")
+theme_override_styles/pressed = SubResource("StyleBox_ButtonHover")
+theme_override_styles/normal = SubResource("StyleBox_Button")
+text = "New Run"
+flat = true
+
+[node name="MenuButton" type="Button" parent="VBoxContainer/ButtonsContainer"]
+custom_minimum_size = Vector2(200, 80)
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBox_ButtonHover")
+theme_override_styles/pressed = SubResource("StyleBox_ButtonHover")
+theme_override_styles/normal = SubResource("StyleBox_Button")
+text = "EXIT"
+flat = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+theme_override_constants/separation = 40
+
+[node name="ColorRect" type="ColorRect" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(400, 600)
+layout_mode = 2
+color = Color(0.145098, 0.145098, 0.145098, 1)
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ColorRect"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -170.0
+offset_top = -61.5
+offset_right = 170.0
+offset_bottom = 61.5
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 20
+
+[node name="TextureRect" type="TextureRect" parent="VBoxContainer/HBoxContainer/ColorRect/VBoxContainer2"]
+custom_minimum_size = Vector2(100, 300)
+layout_mode = 2
+texture = ExtResource("2_a7r41")
+expand_mode = 1
+
+[node name="Button" type="Button" parent="VBoxContainer/HBoxContainer/ColorRect/VBoxContainer2"]
+custom_minimum_size = Vector2(300, 80)
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBox_ButtonHover")
+theme_override_styles/pressed = SubResource("StyleBox_ButtonHover")
+theme_override_styles/normal = SubResource("StyleBox_Button")
+text = "Heat Bonus"
+flat = true
+
+[node name="Label2" type="Label" parent="VBoxContainer/HBoxContainer/ColorRect/VBoxContainer2"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 16
+text = "Match cards in rhythm 
+to earn bonus points (+100)"
+horizontal_alignment = 1
+
+[node name="ColorRect2" type="ColorRect" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(400, 600)
+layout_mode = 2
+color = Color(0.144063, 0.144063, 0.144063, 1)
+
+[node name="VBoxContainer3" type="VBoxContainer" parent="VBoxContainer/HBoxContainer/ColorRect2"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.5
+offset_top = -61.5
+offset_right = 150.5
+offset_bottom = 61.5
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 20
+
+[node name="TextureRect" type="TextureRect" parent="VBoxContainer/HBoxContainer/ColorRect2/VBoxContainer3"]
+custom_minimum_size = Vector2(200, 300)
+layout_mode = 2
+texture = SubResource("CompressedTexture2D_o75od")
+expand_mode = 1
+
+[node name="Button2" type="Button" parent="VBoxContainer/HBoxContainer/ColorRect2/VBoxContainer3"]
+custom_minimum_size = Vector2(300, 80)
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBox_ButtonHover")
+theme_override_styles/pressed = SubResource("StyleBox_ButtonHover")
+theme_override_styles/normal = SubResource("StyleBox_Button")
+text = "Base Points+"
+flat = true
+
+[node name="Label3" type="Label" parent="VBoxContainer/HBoxContainer/ColorRect2/VBoxContainer3"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+theme_override_font_sizes/font_size = 16
+text = "Increase base points
+earned by getting passive points 
+for every found card pair (+10)"
+horizontal_alignment = 1
+
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/ColorRect/VBoxContainer2/Button" to="." method="_on_heat_buff_pressed"]
+[connection signal="pressed" from="VBoxContainer/HBoxContainer/ColorRect2/VBoxContainer3/Button2" to="." method="_on_base_points_buff_pressed"]

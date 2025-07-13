@@ -5,12 +5,23 @@ const BASE_POINTS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/BasePointsM
 const STREAK_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/StreakModifier.gd")
 const HEAT_BONUS_MODIFIER_SCRIPT = preload("res://Scoring/Modifiers/HeatBonusModifier.gd")
 const MODIFIER_MANAGER_SCRIPT = preload("res://Scoring/ModifierManager.gd")
+# Sound file paths - will be loaded at runtime to handle potential format issues
+const HEAT_BONUS_SOUND_PATH = "res://assets/sounds/woo.mp3"
+const STREAK_2_SOUND_PATH = "res://assets/sounds/yeah1.mp3"
+const STREAK_3_SOUND_PATH = "res://assets/sounds/yeah2.mp3" # Beachte das Leerzeichen im Dateinamen
+const STREAK_4_SOUND_PATH = "res://assets/sounds/yeah3.mp3"
 
 # Modifier-Instanzen
 var _modifier_manager = null
 var _base_points_modifier = null
 var _streak_modifier = null
 var _heat_bonus_modifier = null
+
+# Audio players for sound effects
+var _heat_bonus_audio_player: AudioStreamPlayer = null
+var _streak_2_audio_player: AudioStreamPlayer = null
+var _streak_3_audio_player: AudioStreamPlayer = null
+var _streak_4_audio_player: AudioStreamPlayer = null
 
 # UI Referenzen
 @onready var _total_score_label: Label = null
@@ -20,7 +31,9 @@ var _game_won_message_label: Label = null
 
 # Fortschrittsanzeige
 @onready var _score_progress_bar: ProgressBar = null
-var _max_score_target: float = 10000.0  # Standardwert für max. Punktzahl
+var _max_score_target: float = 5000.0  # Maximale Punktzahl für die Fortschrittsleiste
+var _base_score_target: float = 1000.0  # Basis-Punktzahl (wird pro Run verdoppelt)
+var _current_run: int = 1  # Aktueller Spiel-Run (1, 2, 3, ...)
 
 # Spielzustand
 var _current_score: int = 0
@@ -28,6 +41,22 @@ var _pairs_found: int = 0
 var _current_streak: int = 0
 var _streak_multiplier: int = 1
 var _last_round_points: int = 0  # Punkte des letzten erfolgreichen Zugs
+var _last_pair_in_rhythm: bool = false  # Merkt, ob letztes Paar im Rhythmus war
+
+# Heat progress tracking
+var _heat_card_count: int = 0  # Anzahl Karten dieses Paares, die on-beat geöffnet wurden
+var _heat_progress_bar: ProgressBar = null
+var _heat_label: Label = null
+const HEAT_TARGET_CARDS: int = 2
+
+# Signals
+signal score_threshold_reached()
+signal run_completed(run_number: int, target_reached: bool)
+
+# Bonus-Einstellungen (können über ShopUI aktiviert werden)
+var _enable_heat_bonus: bool = false
+var _enable_base_point_increase: bool = false
+var _threshold_reached: bool = false  # To track if we've already shown the shop
 
 # Debug Funktionen
 func _print_debug_info() -> void:
@@ -77,7 +106,7 @@ func set_progress_bar(progress_bar: ProgressBar) -> void:
 				break
 	
 	if score_label:
-		score_label.text = str(_current_score)
+		score_label.text = "%d/%d" % [_current_score, int(_max_score_target)]
 		print("Updated score label to:", score_label.text)
 	else:
 		print("Warning: Could not find any label in progress bar to update")
@@ -91,6 +120,34 @@ func _init() -> void:
 	# Modifier erstellen
 	_base_points_modifier = BASE_POINTS_MODIFIER_SCRIPT.new()
 	_streak_modifier = STREAK_MODIFIER_SCRIPT.new()
+	
+	# Create audio players for sound effects
+	_heat_bonus_audio_player = AudioStreamPlayer.new()
+	_heat_bonus_audio_player.bus = "SFX" # Use SFX audio bus if available
+	_heat_bonus_audio_player.volume_db = -5.0 # Slightly lower volume
+	add_child(_heat_bonus_audio_player)
+	
+	_streak_2_audio_player = AudioStreamPlayer.new()
+	_streak_2_audio_player.bus = "SFX"
+	_streak_2_audio_player.volume_db = -5.0
+	add_child(_streak_2_audio_player)
+	
+	_streak_3_audio_player = AudioStreamPlayer.new()
+	_streak_3_audio_player.bus = "SFX"
+	_streak_3_audio_player.volume_db = -5.0
+	add_child(_streak_3_audio_player)
+	
+	_streak_4_audio_player = AudioStreamPlayer.new()
+	_streak_4_audio_player.bus = "SFX"
+	_streak_4_audio_player.volume_db = -5.0
+	add_child(_streak_4_audio_player)
+	
+	# Load audio streams
+	_load_audio_stream(_heat_bonus_audio_player, HEAT_BONUS_SOUND_PATH, "Heat Bonus")
+	_load_audio_stream(_streak_2_audio_player, STREAK_2_SOUND_PATH, "Streak 2")
+	_load_audio_stream(_streak_3_audio_player, STREAK_3_SOUND_PATH, "Streak 3")
+	_load_audio_stream(_streak_4_audio_player, STREAK_4_SOUND_PATH, "Streak 4+")
+	
 	_heat_bonus_modifier = HEAT_BONUS_MODIFIER_SCRIPT.new()
 	
 	# Modifier in der richtigen Reihenfolge hinzufügen
@@ -105,6 +162,11 @@ func _ready() -> void:
 	EventManager.connect_to_event("pair_found", Callable(self, &"_on_pair_found"))
 	EventManager.connect_to_event("mismatch_attempt", Callable(self, &"_on_mismatch_attempt"))
 	EventManager.connect_to_event("all_pairs_found", Callable(self, &"_on_all_pairs_found"))
+	# Verbindung zum CardRhythmManager, um on-beat-Flips zu verfolgen
+	_connect_card_rhythm_manager()
+	# Falls beim ersten Versuch noch nicht vorhanden, im nächsten Frame erneut versuchen
+	call_deferred("_connect_card_rhythm_manager")
+	get_tree().node_added.connect(self._on_node_added)
 
 func setup_ui_references(panel: Control) -> void:
 	print("ScoreManager: Connecting UI references...")
@@ -124,6 +186,14 @@ func setup_ui_references(panel: Control) -> void:
 			_score_progress_bar.max_value = _max_score_target
 			_score_progress_bar.value = 0
 			print("ScoreManager: Progress bar connected successfully")
+			# Heat-ProgressBar und Label finden
+			_heat_progress_bar = score_bar.get_node_or_null("%HeatProgressBar")
+			if _heat_progress_bar:
+				_heat_progress_bar.max_value = HEAT_TARGET_CARDS
+				_heat_progress_bar.value = 0
+				_heat_label = _heat_progress_bar.get_node_or_null("%HeatLabel")
+				if _heat_label:
+					_heat_label.visible = false
 		else:
 			push_error("ScoreManager: Failed to find progress bar")
 	
@@ -139,7 +209,7 @@ func reset_score_panel() -> void:
 	if _factor_one_label:
 		_factor_one_label.text = "1"
 	if _factor_two_label:
-		_factor_two_label.text = "0"  # Changed from "100" to "0"
+		_factor_two_label.text = "0"  
 	if _game_won_message_label:
 		_game_won_message_label.visible = false
 	# Fortschrittsanzeige zurücksetzen
@@ -147,8 +217,16 @@ func reset_score_panel() -> void:
 		_score_progress_bar.value = _current_score
 		# Label aktualisieren
 		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		if not score_label:
+			print("ScoreLabel not found as direct child, searching for any Label...")
+			for child in _score_progress_bar.get_children():
+				if child is Label:
+					score_label = child
+					print("Found label:", child.name, " of type:", child.get_class())
+					break
+		
 		if score_label:
-			score_label.text = str(_current_score)
+			score_label.text = "%d/%d" % [_current_score, int(_max_score_target)]
 	
 	print("ScoreManager: Score-Panel UI zurückgesetzt")
 
@@ -157,8 +235,16 @@ func reset_score_progress_bar() -> void:
 	if _score_progress_bar:
 		_score_progress_bar.value = 0
 		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		if not score_label:
+			print("ScoreLabel not found as direct child, searching for any Label...")
+			for child in _score_progress_bar.get_children():
+				if child is Label:
+					score_label = child
+					print("Found label:", child.name, " of type:", child.get_class())
+					break
+	
 		if score_label:
-			score_label.text = "0"
+			score_label.text = "0/%d" % [int(_max_score_target)]
 
 # Fügt Punkte hinzu
 func add_score(score: int) -> void:
@@ -174,61 +260,138 @@ func add_score(score: int) -> void:
 	print("==== add_score DONE ====")
 
 # Diese Funktion wird aufgerufen, wenn ein neues Spiel beginnt
-func reset_game() -> void:
+# Parameter reset_buffs gibt an, ob die Buffs zurückgesetzt werden sollen
+func reset_game(reset_buffs: bool = true) -> void:
 	# Alle Punktestände und Zustände zurücksetzen
 	print("\n==== reset_game CALLED ====")
+	print("reset_buffs: ", reset_buffs)
 	_current_score = 0
 	_pairs_found = 0
 	_current_streak = 0
 	_streak_multiplier = 1
 	_last_round_points = 0
+	_threshold_reached = false
 	
-	# UI aktualisieren
+	# Alle Buffs zurücksetzen, aber nur wenn ausdrücklich gewünscht
+	if reset_buffs:
+		_enable_heat_bonus = false
+		_enable_base_point_increase = false
+		print("ScoreManager: Alle Buffs zurückgesetzt")
+		
+		# Deaktiviere das Karten-Highlighting, wenn der Heat Buff zurückgesetzt wird
+		var rhythm_manager = get_node_or_null("/root/CardRhythmManager")
+		if not rhythm_manager:
+			# Versuche es über den Node-Pfad in der Szene
+			rhythm_manager = get_node_or_null("/root/Main/Node")
+		
+		if rhythm_manager and rhythm_manager.get_script() and rhythm_manager.get_script().get_path().find("CardRhythmManager") != -1:
+			if "enable_highlighting" in rhythm_manager:
+				rhythm_manager.enable_highlighting = false
+				print("ScoreManager: Card highlighting DISABLED for heat bonus after game reset")
+	else:
+		print("ScoreManager: Buffs werden beibehalten: Heat=", _enable_heat_bonus, ", BasePoints=", _enable_base_point_increase)
+	
+	# Lauf-Zähler und Ziel-Score nur zurücksetzen, wenn auch die Buffs zurückgesetzt werden
+	if reset_buffs:
+		_current_run = 1
+		# Ziel-Score zurücksetzen
+		_max_score_target = _base_score_target
+		print("ScoreManager: Run und Target Score zurückgesetzt")
+	
+	# UI zurücksetzen
+	if _factor_two_label:
+		_factor_two_label.text = "0"  # Auf 0 zurücksetzen
 	reset_score_panel()
+	reset_score_progress_bar()
+	_reset_heat_progress()
 	print("==== reset_game DONE ====")
 	reset_score_progress_bar()
-		
-	print("ScoreManager: Spiel zurückgesetzt - Score: 0")
+	
+	print("ScoreManager: Spiel zurückgesetzt - Run: %d - Target Score: %.0f" % [_current_run, _max_score_target])
+
+# Erhöht den Run-Zähler und verdoppelt die Zielpunktzahl
+func increment_run() -> void:
+	_current_run += 1
+	_max_score_target = _base_score_target * pow(2, _current_run - 1)
+	print("ScoreManager: Run erhöht auf %d, neue Zielpunktzahl: %.0f" % [_current_run, _max_score_target])
+
+# Setzt das Spiel für einen neuen Run zurück
+func prepare_next_run() -> void:
+	# Punktestände zurücksetzen, aber Run-Zähler und Zielpunkte erhöhen
+	increment_run()
+	_current_score = 0
+	_pairs_found = 0
+	_current_streak = 0
+	_streak_multiplier = 1
+	_last_round_points = 0
+	_threshold_reached = false
+	
+	# UI zurücksetzen
+	reset_score_panel()
+	reset_score_progress_bar()
+	_reset_heat_progress()
+	print("ScoreManager: Nächster Run vorbereitet - Run: %d - Zielpunktzahl: %.0f" % [_current_run, _max_score_target])
 
 func _update_ui() -> void:
 	print("\n==== _update_ui CALLED ====")
 	print("Current score: ", _current_score)
 	print("Progress bar reference: ", _score_progress_bar)
+	
+	# Check if score reached the threshold and we haven't shown the shop yet
+	if _score_progress_bar and not _threshold_reached:
+		if _current_score >= _max_score_target:
+			_threshold_reached = true
+			print("Score threshold reached: ", _current_score, " >= ", _max_score_target)
+			# Emit signal with the current run number
+			emit_signal("score_threshold_reached")
+			emit_signal("run_completed", _current_run, true)
+			print("Score threshold reached! Showing shop UI...")
+	
 	if _score_progress_bar:
 		print("Before update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 	
 	# Update total score label
 	if _total_score_label:
 		_total_score_label.text = str(_current_score)
-		print("Total score label updated to: ", _current_score)
 	
-	# Update streak factor
+	# Update factor one (streak multiplier) - always show at least 1
 	if _factor_one_label:
 		_factor_one_label.text = str(max(1, _current_streak))
 	
-	# Update points display
+	# Update factor two (base points + heat bonus)
 	if _factor_two_label:
-		# Calculate points - show 0 at start, then 100 for first pair, +20 for each additional pair
-		var base_points = 0
-		if _pairs_found > 0:
-			base_points = 100 + (max(0, _pairs_found) * 20)  # Fixed base points calculation
-		# Add heat bonus if both cards were flipped in rhythm
-		# Check if there was a heat bonus in the last pair found
-		var heat_bonus = 100 if _pairs_found > 0 and _current_streak > 0 else 0
-		var total_flat_points = base_points + heat_bonus
-		_factor_two_label.text = str(total_flat_points)
+		# If we're in a mismatch state (current_streak == 0), show 0
+		if _current_streak == 0:
+			_factor_two_label.text = "0"
+		else:
+			# Calculate base points (100 for first pair, more if enabled)
+			var base_points = 100
+			if _enable_base_point_increase and _pairs_found > 1:
+				base_points += (_pairs_found - 1) * 20
+			# Add heat bonus if enabled and last pair was in rhythm
+			if _enable_heat_bonus and _last_pair_in_rhythm:
+				base_points += 100
+			# Update factor two label
+			_factor_two_label.text = str(base_points)
 	
-	# Update progress bar and its label
+	# Update progress bar if available
 	if _score_progress_bar:
-		print("Updating progress bar from ", _score_progress_bar.value, " to ", _current_score)
+		# Set max value if not already set
+		if _score_progress_bar.max_value != _max_score_target:
+			_score_progress_bar.max_value = _max_score_target
+		# Update current value
+		_score_progress_bar.value = min(_current_score, _max_score_target)
+		print("Score progress: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
 		
-		# Update progress bar value
-		print("Setting progress bar value to: ", _current_score)
-		_score_progress_bar.value = _current_score
-		print("After update - Progress bar value: ", _score_progress_bar.value, " / ", _score_progress_bar.max_value)
+		# Update score label in progress bar if it exists
+		# First try with %ScoreLabel (if it's a unique name)
+		var score_label = _score_progress_bar.get_node_or_null("%ScoreLabel")
+		# If not found, try direct child named "ScoreLabel"
+		if not score_label:
+			score_label = _score_progress_bar.get_node_or_null("ScoreLabel")
 		
-		# Find and update the score label inside the progress bar
-		var score_label = _score_progress_bar.get_node_or_null("ScoreLabel")  # Direct child of ScoreProgressBar
+		if score_label:
+			score_label.text = "%d/%d" % [_current_score, int(_max_score_target)]
 		
 		# Fallback: Try to find any Label in the progress bar
 		if not score_label:
@@ -238,8 +401,8 @@ func _update_ui() -> void:
 					break
 		
 		if score_label:
-			score_label.text = str(_current_score)
-			print("ScoreLabel in progress bar updated to: ", _current_score)
+			score_label.text = "%d/%d" % [_current_score, int(_max_score_target)]
+			print("ScoreLabel in progress bar updated to: ", score_label.text)
 		else:
 			print("Warning: Could not find ScoreLabel in progress bar")
 	else:
@@ -251,57 +414,90 @@ func _on_pair_found(data: Dictionary) -> void:
 	print("\n--- ScoreManager: pair_found event received ---")
 	print("Data received: ", data)
 	
-	# Streak aktualisieren
-	_current_streak = 1 if _current_streak == 0 else _current_streak + 1
-	_streak_multiplier = min(_current_streak, 10)  # MAX_STREAK_MULTIPLIER
+	# Check if in rhythm (on beat) - do this before updating pairs_found
+	var was_in_rhythm = data.get("heat_bonus", 0) > 0
 	
-	# Paarzähler erhöhen
+	# Update pairs found counter
+	_last_pair_in_rhythm = was_in_rhythm  # merken für UI
 	_pairs_found = data.get("pairs_found", _pairs_found + 1)
 	
-	# Basis-Punkte berechnen (100 für das erste Paar, dann +20 pro weiteres Paar)
-	# _pairs_found ist 1-basiert, also für das erste Paar ist _pairs_found = 1
-	var base_points = 100 + (max(0, _pairs_found) * 20)
+	# Increase streak for every match
+	# Vorherigen Streak-Wert speichern, um zu erkennen, wann ein neuer Streak-Level erreicht wird
+	var old_streak = _current_streak
 	
-	# Heat Bonus prüfen (100 Punkte wenn im Rhythmus)
-	var heat_bonus = 100 if data.get("heat_bonus", 0) > 0 else 0
+	# Streak erhöhen
+	_current_streak = 1 if _current_streak == 0 else _current_streak + 1
 	
-	# Gesamt-Punkte für diese Runde (ohne Multiplikator)
-	var round_points = base_points + heat_bonus
+	# Soundeffekt basierend auf neuem Streak abspielen
+	# Nur abspielen, wenn ein neuer Streak-Level erreicht wurde (nicht beim ersten Paar)
+	if _current_streak >= 2 and _current_streak > old_streak:
+		_play_streak_sound(_current_streak)
 	
-	# Punkte mit Streak-Multiplikator berechnen
-	_last_round_points = round_points * max(1, _current_streak)
+	# Apply base points (100 for first pair, 100 + 20*(n-1) for subsequent pairs if enabled)
+	var base_points = 100
+	if _enable_base_point_increase and _pairs_found > 1:
+		base_points += (_pairs_found - 1) * 20
+
+	# Apply heat bonus if enabled and in rhythm
+	var rhythm_bonus = 100 if (_enable_heat_bonus and was_in_rhythm) else 0
+	
+	# If heat bonus was applied, animate a label toward the Factor-Two-Label
+	if rhythm_bonus > 0:
+		print("ScoreManager: Heat bonus detected! Creating +100 label animation")
+		# Kurze Verzögerung, um sicherzustellen, dass alles fertig ist
+		await get_tree().create_timer(0.1).timeout
+		_animate_heat_bonus_to_factor_two()
+		print("ScoreManager: Heat bonus label animation triggered")
+	
+	# Points calculation
+	_last_round_points = (base_points + rhythm_bonus) * _current_streak
 	_current_score += _last_round_points
 	
-	# Debug-Ausgabe
-	print("Paar ", _pairs_found, ":")
-	print("  Basis: ", base_points)
-	if heat_bonus > 0:
-		print("  + Heat Bonus: ", heat_bonus)
-	print("  * Streak: ", max(1, _current_streak), "x")
-	print("  = Rundenpunkte: ", _last_round_points)
-	print("  Gesamtpunktzahl: ", _current_score)
-	print("  (Aktueller Streak: ", _current_streak, ")")
+	# Debug output
+	print("Pair ", _pairs_found, ":")
+	print("  Points: ", _last_round_points)
+	print("  Total score: ", _current_score)
+	print("  In rhythm: ", "Yes" if was_in_rhythm else "No")
+	print("  Current streak: ", _current_streak)
 	
-	# UI aktualisieren
+	# Update UI to reflect the changes
 	_update_ui()
+	
+	# Check if we have accumulated enough cards flipped in rhythm AND made a match
+	# If so, show the HEAT text and play the sound
+	if _enable_heat_bonus and _heat_card_count == HEAT_TARGET_CARDS:
+		print("  Match found with full heat progress! Showing HEAT text")
+		_show_heat_text()
+	else:
+		# Reset heat progress
+		_reset_heat_progress()
 
 func _on_mismatch_attempt() -> void:
-	# Streak zurücksetzen bei Fehlversuch
-	print("ScoreManager: Mismatch - Streak wird zurückgesetzt")
+	# Reset streak and multiplier on mismatch
+	print("ScoreManager: Mismatch - Resetting streak")
 	_current_streak = 0
 	_streak_multiplier = 1
-	_last_round_points = 0  # Keine Punkte für diesen Zug
+	_last_round_points = 0  # No points for this attempt
+	_last_pair_in_rhythm = false
 	
-	# UI aktualisieren
+	# Update UI immediately to show 0 points
+	if _factor_one_label:
+		_factor_one_label.text = "1"  # Multiplier stays at least 1
 	if _factor_two_label:
-		_factor_two_label.text = "0"  # Direkt 0 Punkte anzeigen
+		_factor_two_label.text = "0"  # Show 0 immediately on mismatch
+		print("Mismatch - Factor Two set to 0")
 	
-	# Event auslösen, um die UI zu aktualisieren
+	# Update the UI
+	_update_ui()
+	# Reset heat progress on mismatch
+	_reset_heat_progress()
+	
+	# Emit score update event
 	EventManager.emit_signal("score_updated", {
 		"current_score": _current_score,
 		"points_this_round": 0,
 		"streak": 0,
-		"descriptions": ["Kein Paar gefunden"]
+		"descriptions": ["No match found"]
 	})
 
 func _on_all_pairs_found() -> void:
@@ -316,3 +512,308 @@ func set_game_won_message_label(label_ref: Label) -> void:
 	_game_won_message_label = label_ref
 	if _game_won_message_label:
 		_game_won_message_label.visible = false
+
+# Bonus activation methods for ShopUI
+func set_heat_bonus_enabled(enabled: bool) -> void:
+	# Update the state
+	_enable_heat_bonus = enabled
+	print("Heat bonus ", "enabled" if enabled else "disabled")
+
+func set_base_point_increase_enabled(enabled: bool) -> void:
+	_enable_base_point_increase = enabled
+	print("Base point increase ", "enabled" if enabled else "disabled")
+	
+	# When basepoints+ is activated, animate all floating labels to the Factor-Two-Label
+	if enabled:
+		_animate_labels_to_factor_two()
+
+# Getter-Methoden für den Buff-Status
+func is_heat_bonus_enabled() -> bool:
+	return _enable_heat_bonus
+
+func is_base_point_increase_enabled() -> bool:
+	return _enable_base_point_increase
+
+# ---------------------------------------------------
+# Animation and visual effects
+# ---------------------------------------------------
+
+# Animates all floating labels to fly toward the Factor-Two-Label
+func _animate_labels_to_factor_two() -> void:
+	# Make sure we have the Factor-Two-Label reference
+	if not _factor_two_label or not is_instance_valid(_factor_two_label):
+		push_error("ScoreManager: Can't animate labels - Factor-Two-Label not found")
+		return
+	
+	# Debug the Factor-Two-Label properties
+	print("ScoreManager: Factor-Two-Label found at global_position: ", _factor_two_label.global_position)
+	print("ScoreManager: Factor-Two-Label size: ", _factor_two_label.size)
+	
+	# Get the global position of the Factor-Two-Label (center)
+	var factor_two_position = _factor_two_label.global_position + _factor_two_label.size / 2.0
+	print("ScoreManager: Calculated center position: ", factor_two_position)
+	
+	# Get the FloatingLabel class (using a differently named variable to avoid shadowing)
+	var FloatingLabelScript = load("res://Globals/FloatingLabel.gd")
+	if not FloatingLabelScript:
+		push_error("ScoreManager: Can't animate labels - FloatingLabel script not found")
+		return
+	
+	# First get count of active labels before animation
+	var active_count = FloatingLabelScript.active_labels.size() if "active_labels" in FloatingLabelScript else 0
+	print("ScoreManager: Number of active floating labels: ", active_count)
+	
+	# Ensure we have labels to animate
+	if active_count == 0:
+		print("ScoreManager: No active floating labels to animate")
+		# Still flash the Factor-Two-Label for feedback
+		var empty_tween = create_tween()
+		empty_tween.tween_property(_factor_two_label, "modulate", Color(1.5, 1.5, 0.5, 1), 0.2)
+		empty_tween.tween_property(_factor_two_label, "modulate", _factor_two_label.modulate, 0.3)
+		return
+	
+	# Call the static method to animate all active labels
+	print("ScoreManager: Calling animate_all_to_factor_two with position: ", factor_two_position)
+	FloatingLabelScript.animate_all_to_factor_two(factor_two_position)
+	
+	# Visual feedback - make the Factor-Two-Label flash
+	var original_color = _factor_two_label.modulate
+	var tween = create_tween()
+	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(_factor_two_label, "modulate", Color(1.5, 1.5, 0.5, 1), 0.2)
+	tween.tween_property(_factor_two_label, "modulate", original_color, 0.3)
+	print("ScoreManager: Animating all floating labels to Factor-Two-Label")
+
+
+# Creates and animates a heat bonus label (+100) toward the Factor-Two-Label
+# KOMPLETT NEUE IMPLEMENTATION - Direkte Animation ohne FloatingLabel-Klasse
+func _animate_heat_bonus_to_factor_two() -> void:
+	print("ScoreManager: NEUE IMPLEMENTATION - Heat Bonus Animation")
+	
+	# Sicherstellen, dass wir Factor-Two-Label haben
+	if not _factor_two_label or not is_instance_valid(_factor_two_label):
+		push_error("ScoreManager: Can't animate heat bonus - Factor-Two-Label not found")
+		return
+	
+	# Get target position (Factor-Two-Label center)
+	var target_position = _factor_two_label.global_position + _factor_two_label.size / 2.0
+	print("ScoreManager: Factor-Two-Label target position: ", target_position)
+	
+	# Direkt ein Label erstellen (KEIN FloatingLabel)
+	var heat_bonus_label = Label.new()
+	heat_bonus_label.text = "+100"
+	heat_bonus_label.name = "HeatBonusLabel"
+	print("ScoreManager: Created heat bonus label with passive buff style")
+	
+	# Styling wie bei passiven Buffs (Color.GOLD und einfachere Darstellung)
+	heat_bonus_label.add_theme_font_size_override("font_size", 28)  # Wie bei passivem Buff
+	heat_bonus_label.add_theme_color_override("font_color", Color.GOLD)  # Gold wie bei passivem Buff
+	heat_bonus_label.add_theme_constant_override("outline_size", 2)  # Wie bei passivem Buff
+	heat_bonus_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	
+	# Bei CanvasLayer hinzufügen - Direkt zum root
+	get_tree().root.add_child(heat_bonus_label)
+	
+	# Genau bei 5% der Höhe und 85% der Breite starten (weiter oben als zuvor)
+	var viewport_size = get_viewport().get_visible_rect().size
+	heat_bonus_label.global_position = Vector2(viewport_size.x * 0.85, viewport_size.y * 0.05)
+	print("ScoreManager: Heat bonus label position: ", heat_bonus_label.global_position)
+	
+	# Animation wie bei passiven Buff-Labels
+	var tween = create_tween()
+	tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	
+	# 1. Kurz anzeigen und auf genau 1,4 skalieren (vom Benutzer gewünscht)
+	tween.tween_property(heat_bonus_label, "scale", Vector2(1.4, 1.4), 0.3)
+	
+	# 2. Zum Ziel bewegen
+	tween.tween_property(heat_bonus_label, "global_position", target_position, 0.5)
+	
+	# 3. Am Ziel kurz warten
+	tween.tween_interval(0.5)
+	
+	# 4. Einfaches Ausblenden (wie bei passive buff)
+	tween.tween_property(heat_bonus_label, "modulate:a", 0.0, 1.5)  # Gesamtdauer ~3 Sekunden
+	
+	# Nach der Animation Label entfernen
+	tween.connect("finished", func(): 
+		print("ScoreManager: Heat bonus label animation completed")
+		heat_bonus_label.queue_free()
+	)
+	
+	# Dezentes Aufleuchten des Factor-Two-Labels (wie bei passivem Buff)
+	var original_color = _factor_two_label.modulate
+	var factor_tween = create_tween()
+	factor_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	factor_tween.tween_property(_factor_two_label, "modulate", Color(1.2, 1.2, 0.7, 1), 0.2)  # Leichteres Gold-Highlight
+	factor_tween.tween_property(_factor_two_label, "modulate", original_color, 0.3)
+	print("ScoreManager: Heat bonus animation started - im passive buff Stil (~3s Gesamtdauer)")
+	
+	# Ein Timer reicht für die kürzere Animation
+	var check_timer = get_tree().create_timer(2.0)
+	check_timer.timeout.connect(func(): 
+		if is_instance_valid(heat_bonus_label):
+			print("ScoreManager: Heat label check after 2s - alpha: ", heat_bonus_label.modulate.a)
+	)
+
+# ---------------------------------------------------
+# Heat progress helpers
+# ---------------------------------------------------
+
+# Function to set up the heat progress bar and label
+func set_heat_progress_bar(progress_bar: ProgressBar) -> void:
+	print("\n==== set_heat_progress_bar CALLED ====")
+	print("Heat progress bar reference received:", progress_bar)
+	
+	if not progress_bar:
+		push_error("ScoreManager: No heat progress bar provided")
+		return
+		
+	_heat_progress_bar = progress_bar
+	_heat_progress_bar.max_value = HEAT_TARGET_CARDS
+	_heat_progress_bar.value = 0
+	
+	# Find the heat label
+	_heat_label = _heat_progress_bar.get_node_or_null("HeatLabel")
+	if _heat_label:
+		_heat_label.visible = false
+		print("Heat label found and connected")
+	else:
+		push_error("ScoreManager: HeatLabel not found in heat progress bar")
+	
+	print("Heat progress bar initialized with max value:", _heat_progress_bar.max_value)
+	print("==== set_heat_progress_bar DONE ====")
+
+func _reset_heat_progress() -> void:
+	_heat_card_count = 0
+	if _heat_progress_bar:
+		_heat_progress_bar.value = 0
+	if _heat_label:
+		_heat_label.visible = false
+
+func _on_card_flipped_in_rhythm(card) -> void:
+	print("\n==== _on_card_flipped_in_rhythm CALLED ====")
+	print("ScoreManager: Received card_flipped_in_rhythm for card: ", card)
+	print("  Heat bonus enabled: ", _enable_heat_bonus)
+	print("  Current heat card count: ", _heat_card_count, "/", HEAT_TARGET_CARDS)
+	
+	# Nur reagieren, wenn Heat-Bonus aktiviert ist
+	if not _enable_heat_bonus:
+		print("  Heat bonus not enabled, ignoring")
+		return
+		
+	# Nur bis zum Ziel zählen
+	if _heat_card_count >= HEAT_TARGET_CARDS:
+		print("  Already reached target count, ignoring")
+		return
+		
+	# Karten-Zähler erhöhen
+	_heat_card_count += 1
+	print("  Heat card count incremented to ", _heat_card_count)
+	
+	# Wenn wir keine Referenz zum Fortschrittsbalken haben, versuchen wir diese direkt zu finden
+	if not _heat_progress_bar:
+		print("  Attempting to find HeatProgressBar directly...")
+		_heat_progress_bar = get_tree().get_root().find_child("HeatProgressBar", true, false)
+		if _heat_progress_bar:
+			_heat_label = _heat_progress_bar.get_node_or_null("HeatLabel")
+			print("  Found HeatProgressBar and HeatLabel directly")
+	
+	# Fortschrittsbalken aktualisieren
+	if _heat_progress_bar:
+		# Sicherstellen, dass der Maximalwert korrekt gesetzt ist
+		_heat_progress_bar.max_value = HEAT_TARGET_CARDS
+		# Wert direkt setzen
+		_heat_progress_bar.value = _heat_card_count
+		print("  Heat progress bar value set to ", _heat_progress_bar.value, " / ", _heat_progress_bar.max_value)
+	else:
+		printerr("  ERROR: Could not find _heat_progress_bar!")
+	
+	# Wir zeigen hier nicht mehr den HEAT Text an oder spielen den Sound ab
+	# Dies wird jetzt nur in _on_pair_found gemacht, wenn es tatsächlich ein Match gibt
+	
+	print("==== _on_card_flipped_in_rhythm DONE ====")
+
+func _show_heat_text() -> void:
+	# Zeige HEAT! Text an
+	if _heat_label:
+		_heat_label.text = "HEAT!"
+		_heat_label.visible = true
+	
+	# Spiele den Sound ab, wenn der Heat-Bonus ausgelöst wird
+	if _heat_bonus_audio_player and _heat_bonus_audio_player.stream:
+		print("Playing heat bonus sound effect: woo.mp3")
+		_heat_bonus_audio_player.play()
+		if not _heat_bonus_audio_player.playing:
+			push_error("ScoreManager: Failed to play heat bonus sound effect")
+	
+	# Kurze Verzögerung, dann zurücksetzen
+	await get_tree().create_timer(0.6).timeout
+	if _heat_label:
+		_heat_label.visible = false
+	_reset_heat_progress()
+
+# Helper function to load audio streams
+func _load_audio_stream(audio_player: AudioStreamPlayer, sound_path: String, sound_name: String) -> void:
+	# Try to load the sound file
+	var file_exists = FileAccess.file_exists(sound_path)
+	if file_exists:
+		var audio_stream = load(sound_path)
+		if audio_stream:
+			audio_player.stream = audio_stream
+			print("Successfully loaded " + sound_name + " sound")
+		else:
+			push_error("ScoreManager: Failed to load audio stream from " + sound_path)
+	else:
+		push_error("ScoreManager: Audio file not found at " + sound_path)
+
+# Play appropriate sound effect based on streak level
+func _play_streak_sound(streak_level: int) -> void:
+	if ((streak_level == 2) or (streak_level == 3)) and _streak_2_audio_player and _streak_2_audio_player.stream:
+		print("Playing streak 2 sound effect: yeah1.mp3")
+		_streak_2_audio_player.play()
+		if not _streak_2_audio_player.playing:
+			push_error("ScoreManager: Failed to play streak 2 sound effect")
+	elif( streak_level == 4   or (streak_level == 5)) and _streak_3_audio_player and _streak_3_audio_player.stream:
+		print("Playing streak 3 sound effect: yeah2.mp3")
+		_streak_3_audio_player.play()
+		if not _streak_3_audio_player.playing:
+			push_error("ScoreManager: Failed to play streak 3 sound effect")
+	elif streak_level >= 6 and _streak_4_audio_player and _streak_4_audio_player.stream:
+		print("Playing streak 4+ sound effect: yeah3.mp3")
+		_streak_4_audio_player.play()
+		if not _streak_4_audio_player.playing:
+			push_error("ScoreManager: Failed to play streak 4+ sound effect")
+
+# Attempt to connect to ANY node that exposes the `card_flipped_in_rhythm` signal.
+# This avoids brittleness if the node is renamed (e.g. Godot appends "2" when duplicates exist).
+func _try_connect_to_rhythm_manager(node: Node) -> void:
+	if not node:
+		return
+	if not node.has_signal("card_flipped_in_rhythm"):
+		return
+	var cb := Callable(self, "_on_card_flipped_in_rhythm")
+	if node.card_flipped_in_rhythm.is_connected(cb):
+		return
+	node.card_flipped_in_rhythm.connect(cb)
+	print("ScoreManager: Heat progress connected to %s" % node.name)
+
+func _connect_card_rhythm_manager() -> void:
+	print("ScoreManager: Attempting to connect to CardRhythmManager…")
+	# First, try by explicit name (legacy behaviour)
+	var crm = get_tree().get_root().find_child("CardRhythmManager", true, false)
+	print("  CardRhythmManager found by name? ", crm != null)
+	if crm:
+		_try_connect_to_rhythm_manager(crm)
+
+	# If not found by name, fall back to group search (added in CardRhythmManager script)
+	if not crm:
+		var group_nodes := get_tree().get_nodes_in_group("RhythmManager")
+		print("  RhythmManager group nodes count: ", group_nodes.size())
+		for n in group_nodes:
+			_try_connect_to_rhythm_manager(n)
+
+func _on_node_added(node: Node) -> void:
+	# Godot may append numbers if multiple nodes with same name exist; rely on signal presence instead
+	print("ScoreManager: node_added -> ", node.name)
+	_try_connect_to_rhythm_manager(node)

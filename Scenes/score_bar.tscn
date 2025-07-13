@@ -1,4 +1,20 @@
-[gd_scene format=3 uid="uid://c7tne7uowmnoq"]
+[gd_scene load_steps=4 format=3 uid="uid://c7tne7uowmnoq"]
+
+[ext_resource type="Script" uid="uid://bnh1jcg1drruj" path="res://Scenes/ScoreBarController.gd" id="1_optbv"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6aicf"]
+bg_color = Color(0, 0, 0, 0.25098)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7oioq"]
+bg_color = Color(0, 0, 0, 0.25098)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
 
 [node name="ScoreBar" type="Control"]
 layout_mode = 3
@@ -7,26 +23,37 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_optbv")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 15
+anchors_preset = 10
 anchor_right = 1.0
-anchor_bottom = 1.0
+offset_bottom = 40.0
 grow_horizontal = 2
-grow_vertical = 2
 
-[node name="ScoreProgressBar" type="ProgressBar" parent="HBoxContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label2" type="Label" parent="HBoxContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 28
+text = "Next Level O Meter"
+
+[node name="ScoreProgressBar" type="ProgressBar" parent="HBoxContainer/VBoxContainer"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_6aicf")
 max_value = 10000.0
 value = 300.0
 show_percentage = false
 
-[node name="ScoreLabel" type="Label" parent="HBoxContainer/ScoreProgressBar"]
+[node name="ScoreLabel" type="Label" parent="HBoxContainer/VBoxContainer/ScoreProgressBar"]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 8
@@ -46,5 +73,47 @@ theme_override_colors/font_outline_color = Color(0.0233718, 0.0233718, 0.0233718
 theme_override_constants/outline_size = 2
 theme_override_font_sizes/font_size = 24
 text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer2"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 28
+text = "Heat-Level"
+
+[node name="HeatProgressBar" type="ProgressBar" parent="HBoxContainer/VBoxContainer2"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("StyleBoxFlat_7oioq")
+max_value = 2.0
+show_percentage = false
+
+[node name="HeatLabel" type="Label" parent="HBoxContainer/VBoxContainer2/HeatProgressBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -13.0
+offset_right = 40.0
+offset_bottom = 13.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0.5, 0, 0, 1)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 24
 horizontal_alignment = 1
 vertical_alignment = 1

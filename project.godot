@@ -22,6 +22,7 @@ TextureLoader="*res://Globals/TextureLoader.gd"
 ScoreManager="*res://Globals/ScoreManager.gd"
 EventManager="*res://Globals/EventManager.gd"
 GameManager="*res://Globals/GameManager.gd"
+InventoryManager="*res://Globals/inventory_manager.tscn"
 
 [display]
 

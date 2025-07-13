@@ -5,6 +5,9 @@ signal flipped(card)
 signal matched(card)
 signal state_changed(card, is_face_up: bool)
 
+# Configuration
+static var enable_buff_animations: bool = false  # Controls whether to show buff animations
+
 @export var card_identifier: Variant = null
 @export var face_texture: Texture2D = null
 @export var back_texture: Texture2D = null
@@ -63,6 +66,16 @@ func mark_matched() -> void:
 	matched.emit(self)
 	show_points(50)
 
+# Reverses the matched state, making the card available again
+func unmark_matched() -> void:
+	if not _is_matched:
+		return
+	_is_matched = false
+	# Reset to face texture since it was face up when matched
+	texture_normal = face_texture
+	# Card remains face up but can be flipped down later
+	_is_face_up = true
+
 func is_face_up() -> bool:
 	return _is_face_up
 
@@ -81,6 +94,16 @@ func _ready() -> void:
 
 # Spawn a floating text at the card's position indicating points earned
 func show_points(points: int) -> void:
+	# Skip buff animations if they are disabled
+	if points == 10 and not enable_buff_animations:
+		return
+	
+	# Überprüfen, ob die ShopUI sichtbar ist
+	var shop_ui = get_node_or_null("/root/Main/ShopUI") 
+	if shop_ui and shop_ui.visible:
+		print("ShopUI is visible, skipping floating label")
+		return
+		
 	var lbl := FloatingLabel.new()
 	lbl.text = "+" + str(points)
 	
@@ -211,3 +234,20 @@ func set_as_matched() -> void:
 
 func flip_back() -> void:
 	flip_down()
+
+# Bereinigt alle laufenden Animationen und Kind-Nodes
+func cleanup_animations() -> void:
+	# Floating Labels und andere temporäre Nodes entfernen
+	for child in get_children():
+		if child is FloatingLabel or child.get_class() == "FloatingLabel":
+			child.queue_free()
+	
+	# In Godot 4 sind Tweens keine Nodes mehr, sondern werden vom SceneTree verwaltet
+	# Wir können also keine direkten Kind-Nodes vom Typ Tween finden
+	# Stattdessen setzen wir einfach die Modulation zurück
+	
+	# Modulation zurücksetzen
+	modulate = Color.WHITE
+	
+	# Rhythm-Status zurücksetzen
+	was_flipped_in_rhythm = false

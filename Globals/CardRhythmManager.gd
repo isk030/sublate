@@ -25,6 +25,9 @@ const CARDS_TO_HIGHLIGHT: int = 2
 # Debug
 @export var debug_mode: bool = true  # Set to true to see debug messages
 
+# Feature Flags
+@export var enable_highlighting: bool = false  # Controls whether cards are visually highlighted
+
 # References
 @onready var game_manager: Node = get_node("/root/GameManager") if get_node_or_null("/root/GameManager") else null
 var card_container: GridContainer = null
@@ -288,16 +291,19 @@ func _on_beat() -> void:
 		printerr("Too many cards selected: ", highlighted_cards.size())
 		highlighted_cards = highlighted_cards.slice(0, CARDS_TO_HIGHLIGHT)
 	
-	# Hervorheben der ausgewählten Karten
-	for card in highlighted_cards:
-		if card is CanvasItem:
-			# Originalfarbe speichern, falls noch nicht geschehen
-			if not card.has_meta("original_modulate"):
-				card.set_meta("original_modulate", card.modulate)
-			# Hervorhebungsfarbe anwenden
-			card.modulate = highlight_color
-			if debug_mode:
-				print("Highlighted card: ", card.name)
+	# Hervorheben der ausgewählten Karten, wenn aktiviert
+	if enable_highlighting:
+		for card in highlighted_cards:
+			if card is CanvasItem:
+				# Originalfarbe speichern, falls noch nicht geschehen
+				if not card.has_meta("original_modulate"):
+					card.set_meta("original_modulate", card.modulate)
+				# Hervorhebungsfarbe anwenden
+				card.modulate = highlight_color
+	else:
+		if debug_mode:
+			print("Card highlighting is disabled (enable_highlighting = false)")
+			print("Would have highlighted ", highlighted_cards.size(), " cards")
 	
 	# Timer zum Entfernen der Hervorhebungen starten
 	if not highlight_timer:
@@ -352,6 +358,10 @@ func is_card_highlighted(card: Node) -> bool:
 	return is_highlighted
 
 func _clear_highlights() -> void:
+	if not enable_highlighting:
+		highlighted_cards.clear()
+		return
+		
 	var _start_time = Time.get_ticks_msec() if debug_mode else 0
 	var cards_cleared = 0
 	
